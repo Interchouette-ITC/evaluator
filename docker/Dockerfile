@@ -16,8 +16,10 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 # Skip Puppeteer browser fetch in the builder; runtime uses distro Chromium.
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_SKIP_DOWNLOAD=true
+# Also set executablePath so puppeteer treats skipDownload as default.
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY package.json package-lock.json ./
 RUN npm ci

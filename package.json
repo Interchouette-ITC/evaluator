@@ -22,6 +22,9 @@
     "test": "nx run-many -t test --all"
   },
   "private": true,
+  "puppeteer": {
+    "skipDownload": true
+  },
   "dependencies": {
     "@angular/animations": "22.1.0",
     "@angular/common": "22.1.0",
