@@ -11,7 +11,7 @@
     "src/lib/util-hihlight.ts",
     "src/test-setup.ts",
     "**/*.spec.ts",
-    "jest.config.ts",
+    "vite.config.mts",
     "**/*.test.ts"
   ],
   "include": ["**/*.ts"]

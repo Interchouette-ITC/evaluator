@@ -4,19 +4,27 @@
   "prefix": "evaluator",
   "targets": {
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/libs/ui/input"],
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
       "options": {
-        "jestConfig": "libs/ui/input/jest.config.ts",
-        "passWithNoTests": true
+        "config": "libs/ui/input/vite.config.mts",
+        "reportsDirectory": "coverage/libs/ui/input"
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["libs/ui/input/**/*.ts", "libs/ui/input/**/*.html"]
+        "lintFilePatterns": [
+          "libs/ui/input/**/*.ts",
+          "libs/ui/input/**/*.html"
+        ]
       }
     }
   },
-  "tags": ["input"]
+  "tags": [
+    "input"
+  ],
+  "name": "ui-input"
 }

@@ -4,20 +4,29 @@
   "projectType": "library",
   "targets": {
     "lint": {
-      "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "executor": "@nx/eslint:lint",
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
-        "lintFilePatterns": ["libs/util/functions/**/*.ts"]
+        "lintFilePatterns": [
+          "libs/util/functions/**/*.ts"
+        ]
       }
     },
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/libs/util/functions"],
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
       "options": {
-        "jestConfig": "libs/util/functions/jest.config.ts",
-        "passWithNoTests": true
+        "config": "libs/util/functions/vite.config.mts",
+        "reportsDirectory": "coverage/libs/util/functions"
       }
     }
   },
-  "tags": ["util-functions"]
+  "tags": [
+    "util-functions"
+  ],
+  "name": "util-functions"
 }

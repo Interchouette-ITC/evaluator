@@ -8,6 +8,14 @@
 # dependencies
 node_modules
 
+# Nx / Angular caches
+.nx
+.angular
+
+# local caches
+.cache/*
+!.cache/.gitkeep
+
 # IDEs and editors
 /.idea
 .project
@@ -38,7 +46,9 @@ testem.log
 .DS_Store
 Thumbs.db
 
-.angular
+# runtime / local data
 database.db
 
 */target/
+.github_credentials
+.cursor

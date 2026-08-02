@@ -1,75 +1,53 @@
 import * as dotenv from 'dotenv';
-import 'zone.js/dist/zone-node';
-import { APP_BASE_HREF } from '@angular/common';
-import { ngExpressEngine } from '@nguniversal/express-engine';
-import { AppServerModule } from './src/main.server';
 import { join } from 'path';
-import * as express from 'express';
+import express, { type Request, type Response } from 'express';
 import { WebSocketServer } from 'ws';
 import * as http from 'http';
 import { createProxyMiddleware as proxy } from 'http-proxy-middleware';
 import { Message } from '@evaluator/shared-types';
 import { PuppeteerResolver } from '@evaluator/util-puppeteer';
-import * as basicAuth from 'express-basic-auth';
+import basicAuth from 'express-basic-auth';
+
+dotenv.config({ override: true });
+
 const user = process.env['DB_USER'] || 'user';
 const pwd = process.env['DB_PWD'] || 'pwd';
 const users = { [user]: pwd };
 const auth = basicAuth({
   users,
-  challenge: true
+  challenge: true,
 });
-dotenv.config({ override: true });
 
-const express_app = express();
+const apiProxy = proxy({
+  target: 'http://127.0.0.1:3333',
+  changeOrigin: true,
+});
 
-// Proxy to Nest.js app
-const apiProxy = proxy('/api', { target: 'http://localhost:3333' });
-
-// The Express app is exported so that it can be used by appless Functions.
-export function app(): express.Express {
+export function createApp(): express.Express {
+  const app = express();
   const distFolder = join(process.cwd(), 'dist/evaluator/browser');
-  //
-  // Our Universal express-engine (found @ https://github.com/angular/universal/tree/main/modules/express-engine)
-  express_app.engine('html', ngExpressEngine({
-    bootstrap: AppServerModule,
-  }));
 
-  express_app.set('view engine', 'html');
-  express_app.set('views', distFolder);
+  app.get(/^\/evaluate(\/.*)?$/, PuppeteerResolver.resolve);
 
-  // Example Express Rest API endpoints
-  express_app.get('/evaluate/*', PuppeteerResolver.resolve);
-
-  express_app.use('/db/*', auth, (req, res, next) => {
-    next();
+  app.use('/db', auth);
+  app.get('/db/database.db', (_req: Request, res: Response) => {
+    res.sendFile(join(process.cwd(), 'database.db'), {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
   });
 
-  express_app.get('/db/database.db', (req, res) => {
-    const options = {
-      headers: {
-        'Cache-Control': 'no-cache',
-      }
-    };
-    const filePath = process.cwd() + '/database.db';
-    res.sendFile(filePath, options);
+  app.use('/api', apiProxy);
+
+  app.use(express.static(distFolder, { maxAge: '1y', index: false }));
+
+  app.get('*', (_req: Request, res: Response) => {
+    res.sendFile(join(distFolder, 'index.html'));
   });
 
-  express_app.get('/api/*', apiProxy);
-
-  // Serve static files from /browser
-  express_app.get('*.*', express.static(distFolder, {
-    maxAge: '1y'
-  }));
-
-  // All regular routes use the Universal engine
-  express_app.get('*', (req, res) => {
-    res.render('index', { req, providers: [{ provide: APP_BASE_HREF, useValue: req.baseUrl }] });
-  });
-
-  return express_app;
+  return app;
 }
 
-function setWebscocketServer(server: http.Server) {
+function attachWebSocket(server: http.Server) {
   const wss = new WebSocketServer({ server });
   wss.on('connection', (ws) => {
     ws.send(JSON.stringify('connection'));
@@ -83,25 +61,14 @@ function setWebscocketServer(server: http.Server) {
   });
 }
 
-// Start up the Node app
 function run(): void {
-  const port = process.env['PORT'] || 4000;
-  const express_app = app();
-  const server = http.createServer(express_app);
-  setWebscocketServer(server);
+  const port = Number(process.env['PORT'] || 4000);
+  const app = createApp();
+  const server = http.createServer(app);
+  attachWebSocket(server);
   server.listen(port, () => {
     console.log(`Node Express app listening on http://localhost:${port}`);
   });
 }
 
-// Webpack will replace 'require' with '__webpack_require__'
-// '__non_webpack_require__' is a proxy to Node 'require'
-// The below code is to ensure that the app is run only when not requiring the bundle.
-declare const __non_webpack_require__: NodeRequire;
-const mainModule = __non_webpack_require__.main;
-const moduleFilename = mainModule && mainModule.filename || '';
-if (moduleFilename === __filename || moduleFilename.includes('iisnode')) {
-  run();
-}
-
-export * from './src/main.server';
+run();

@@ -4,7 +4,7 @@
   "prefix": "evaluator",
   "targets": {
     "lint": {
-      "executor": "@nrwl/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "options": {
         "lintFilePatterns": [
           "libs/shared/types/**/*.ts",
@@ -13,5 +13,8 @@
       }
     }
   },
-  "tags": ["types"]
+  "tags": [
+    "types"
+  ],
+  "name": "shared-types"
 }

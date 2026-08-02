@@ -1,41 +1,55 @@
 # syntax=docker/dockerfile:1
 
-FROM debian:10.9-slim
-RUN apt-get update && apt-get install -y unzip wget bash
+# Build from repo root: docker build -f docker/Dockerfile .
+# Or: make docker-build
+#
+# Security baseline: multi-stage, non-root, minimal COPY, exec-form node entry
+# (kms-secp256k1-api style). Distroless is not used here because Puppeteer needs Chromium.
+
+ARG NODE_IMAGE=node:26-bookworm-slim
+
+FROM ${NODE_IMAGE} AS builder
+WORKDIR /app
+
 RUN apt-get update \
-  && apt-get install -y wget gnupg \
-  && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-  && sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list' \
-  && apt-get update \
-  && apt-get install -y google-chrome-stable fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf libxss1 \
-  --no-install-recommends \
+  && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
-ARG USERNAME=user
-RUN useradd --user-group --system --create-home --no-log-init ${USERNAME}
-WORKDIR /home/${USERNAME}
-USER $USERNAME
+COPY package.json package-lock.json ./
+RUN npm ci
 
-SHELL ["/bin/bash", "--login", "-c"]
-RUN wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
-RUN nvm install v18.7.0
-RUN npm install -g npm@8.19.2
+COPY . .
+RUN npm run build \
+  && npm prune --omit=dev
 
-RUN wget -q https://github.com/gRoussac/evaluator/archive/refs/heads/master.zip
-ARG TMP="./tmp"
-RUN unzip -q ./*.zip -d ${TMP}
-RUN mv ${TMP}/*/* ./ && rm -rf ${TMP} *.zip
-ENV PORT=4000
-RUN npm install --loglevel=error && npm run build --loglevel=error
-USER root
-# v 19.2.0
-# RUN ls -al .cache/puppeteer/chrome/linux-1056772/chrome-linux/
-ARG INSTALL_DIR=.cache/puppeteer/chrome/linux-1056772/chrome-linux/
-# # v 18.2.1
-# RUN ls -al node_modules/puppeteer-core/.local-chromium/linux-*/chrome-linux
-# # ARG INSTALL_DIR=node_modules/puppeteer-core/.local-chromium/linux-*/chrome-linux
-RUN cd  ${INSTALL_DIR} && chown root:root chrome_sandbox && chmod 4755 chrome_sandbox && cp -p chrome_sandbox /usr/local/sbin/chrome-devel-sandbox
-USER $USERNAME
-# ENV CHROME_DEVEL_SANDBOX=/usr/local/sbin/chrome-devel-sandbox
-# RUN ls -al /usr/local/sbin/chrome-devel-sandbox
-CMD  npm run serve
+FROM ${NODE_IMAGE} AS runtime
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-freefont-ttf \
+    libxss1 \
+    ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && groupadd --system --gid 1001 app \
+  && useradd --system --uid 1001 --gid app --create-home --home-dir /home/app app
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    PORT=4000 \
+    NODE_ENV=production
+
+COPY --from=builder --chown=app:app /app/package.json /app/package-lock.json ./
+COPY --from=builder --chown=app:app /app/node_modules ./node_modules
+COPY --from=builder --chown=app:app /app/dist ./dist
+COPY --chown=app:app docker/serve.mjs ./docker/serve.mjs
+
+USER app
+EXPOSE 4000
+
+CMD ["node", "docker/serve.mjs"]

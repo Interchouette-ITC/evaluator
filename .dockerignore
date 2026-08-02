@@ -1,0 +1,37 @@
+# Build context = repo root (docker build -f docker/Dockerfile .)
+.git
+.github
+.github_credentials
+.gitignore
+.cursor
+.idea
+.vscode
+.DS_Store
+**/*~
+**/*.swp
+**/*.swo
+
+node_modules
+.nx
+.angular
+dist
+tmp
+out-tsc
+coverage
+database.db
+.env
+.env.*
+!.env.example
+
+# Rust CLI build artifacts (not needed in Node image)
+evaluator/target
+**/target
+
+# Local tooling / docs not needed in image
+*.md
+!README.md
+Makefile
+.dockerignore
+docker/*.md
+test.png
+*.code-workspace

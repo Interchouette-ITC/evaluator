@@ -4,15 +4,17 @@
   "prefix": "evaluator",
   "targets": {
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/libs/feature/home"],
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
       "options": {
-        "jestConfig": "libs/feature/home/jest.config.ts",
-        "passWithNoTests": true
+        "config": "libs/feature/home/vite.config.mts",
+        "reportsDirectory": "coverage/libs/feature/home"
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "options": {
         "lintFilePatterns": [
           "libs/feature/home/**/*.ts",
@@ -21,5 +23,8 @@
       }
     }
   },
-  "tags": ["feature-home"]
+  "tags": [
+    "feature-home"
+  ],
+  "name": "feature-home"
 }

@@ -1,18 +1,23 @@
 {
+  "name": "evaluator",
   "projectType": "application",
   "sourceRoot": "apps/evaluator/src",
   "prefix": "evaluator",
+  "tags": [],
   "targets": {
     "build": {
-      "executor": "@angular-devkit/build-angular:browser",
-      "outputs": ["{options.outputPath}"],
+      "executor": "@angular/build:application",
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
-        "outputPath": "dist/evaluator/browser",
+        "outputPath": "dist/evaluator",
+        "browser": "apps/evaluator/src/main.ts",
         "index": "apps/evaluator/src/index.html",
-        "main": "apps/evaluator/src/main.ts",
-        "polyfills": "apps/evaluator/src/polyfills.ts",
+        "polyfills": [
+          "zone.js"
+        ],
         "tsConfig": "apps/evaluator/tsconfig.app.json",
-        "webWorkerTsConfig": "libs/util/hihlight-webworker/tsconfig.webworker.json",
         "inlineStyleLanguage": "scss",
         "assets": [
           "apps/evaluator/src/favicon.ico",
@@ -20,9 +25,13 @@
         ],
         "styles": [
           "apps/evaluator/src/styles.scss",
-          "./node_modules/highlight.js/styles/github-dark.css"
+          "node_modules/highlight.js/styles/github-dark.css"
         ],
-        "scripts": []
+        "optimization": {
+          "scripts": true,
+          "styles": true,
+          "fonts": false
+        }
       },
       "configurations": {
         "production": {
@@ -44,27 +53,30 @@
               "with": "apps/evaluator/src/environments/environment.prod.ts"
             }
           ],
-          "outputHashing": "all"
+          "outputHashing": "all",
+          "optimization": {
+            "scripts": true,
+            "styles": true,
+            "fonts": false
+          }
         },
         "development": {
-          "buildOptimizer": false,
           "optimization": false,
-          "vendorChunk": true,
           "extractLicenses": false,
-          "sourceMap": true,
-          "namedChunks": true
+          "sourceMap": true
         }
       },
       "defaultConfiguration": "production"
     },
     "serve": {
-      "executor": "@angular-devkit/build-angular:dev-server",
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
       "configurations": {
         "production": {
-          "browserTarget": "evaluator:build:production"
+          "buildTarget": "evaluator:build:production"
         },
         "development": {
-          "browserTarget": "evaluator:build:development"
+          "buildTarget": "evaluator:build:development"
         }
       },
       "defaultConfiguration": "development",
@@ -73,13 +85,13 @@
       }
     },
     "extract-i18n": {
-      "executor": "@angular-devkit/build-angular:extract-i18n",
+      "executor": "@angular/build:extract-i18n",
       "options": {
-        "browserTarget": "evaluator:build"
+        "buildTarget": "evaluator:build"
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "options": {
         "lintFilePatterns": [
           "apps/evaluator/**/*.ts",
@@ -88,82 +100,63 @@
       }
     },
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/apps/evaluator"],
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
       "options": {
-        "jestConfig": "apps/evaluator/jest.config.ts",
-        "passWithNoTests": true
+        "config": "apps/evaluator/vite.config.mts",
+        "reportsDirectory": "coverage/apps/evaluator"
       }
     },
-    "server": {
-      "executor": "@angular-builders/custom-webpack:server",
+    "build-node": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/evaluator/server",
         "main": "apps/evaluator/server.ts",
         "tsConfig": "apps/evaluator/tsconfig.server.json",
-        "inlineStyleLanguage": "scss",
-        "customWebpackConfig": {
-          "path": "custom-webpack.config.js",
-          "mergeRules": {
-            "module": {
-              "rules": "prepend"
-            }
-          },
-          "replaceDuplicatePlugins": true
+        "platform": "node",
+        "format": [
+          "cjs"
+        ],
+        "bundle": true,
+        "thirdParty": true,
+        "generatePackageJson": false,
+        "external": [
+          "sqlite3",
+          "puppeteer",
+          "express",
+          "ws",
+          "dotenv",
+          "express-basic-auth",
+          "http-proxy-middleware"
+        ],
+        "esbuildOptions": {
+          "outExtension": {
+            ".js": ".js"
+          }
         }
-      },
-      "configurations": {
-        "production": {
-          "outputHashing": "media",
-          "fileReplacements": [
-            {
-              "replace": "apps/evaluator/src/environments/environment.ts",
-              "with": "apps/evaluator/src/environments/environment.prod.ts"
-            }
-          ]
-        },
-        "development": {
-          "optimization": false,
-          "sourceMap": true,
-          "extractLicenses": false
-        }
-      },
-      "defaultConfiguration": "production"
+      }
     },
-    "serve-ssr": {
-      "executor": "@nguniversal/builders:ssr-dev-server",
+    "serve-node": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "evaluator:build-node",
+        "watch": true
+      },
       "configurations": {
         "development": {
-          "browserTarget": "evaluator:build:development",
-          "serverTarget": "evaluator:server:development"
+          "buildTarget": "evaluator:build-node"
         },
         "production": {
-          "browserTarget": "evaluator:build:production",
-          "serverTarget": "evaluator:server:production"
+          "buildTarget": "evaluator:build-node",
+          "watch": false
         }
-      },
-      "options": {
-        "proxyConfig": "apps/evaluator/proxy.conf.json"
-      },
-      "defaultConfiguration": "development"
-    },
-    "prerender": {
-      "executor": "@nguniversal/builders:prerender",
-      "options": {
-        "routes": ["/"]
-      },
-      "configurations": {
-        "production": {
-          "browserTarget": "evaluator:build:production",
-          "serverTarget": "evaluator:server:production"
-        },
-        "development": {
-          "browserTarget": "evaluator:build:development",
-          "serverTarget": "evaluator:server:development"
-        }
-      },
-      "defaultConfiguration": "production"
+      }
     }
-  },
-  "tags": []
+  }
 }

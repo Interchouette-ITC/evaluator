@@ -4,9 +4,11 @@ This project aims to ease evaluating the parameters of javascript functions on a
 
 Typically helps with deobfuscating https://stackoverflow.com/questions/32977908/how-can-i-deobfuscate-this-javascript using `String.fromCharCode` or `window.eval` or other functions like `JSON.stringify`
 
-## Deployed on [Render](https://render.com/) at [evaluator.onlyeum.io](https://evaluator.onlyeum.io/) (beta 🏚️🕸️🕷️)
+## Deployed on [Render](https://render.com/) at [evaluator.onlyeum.io](https://evaluator.onlyeum.io/) (beta)
 
-## References :
+Render will be redeployed from the Interchouette Docker image in a later pass.
+
+## References
 
 - https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store
 - https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt
@@ -15,7 +17,7 @@ Typically helps with deobfuscating https://stackoverflow.com/questions/32977908/
 
 ![Evaluator (17)](https://user-images.githubusercontent.com/3099551/200139284-676f2ac4-042d-4de4-8b06-7f3345232996.png)
 
-# **Quick Start & Documentation**
+# Quick Start and Documentation
 
 ## API
 
@@ -25,35 +27,56 @@ Use
 evaluate/?url=[site url]&function=[function to evaluate]
 ```
 
-Example
+Example (dev FE on port 4200)
 
 ```
 http://localhost:4200/evaluate/?url=https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval&function=window.eval
 ```
 
-a screen shot of the website will be provided in the response stream.
+Production / Docker Node gateway listens on port **4000**. A screenshot of the website is included in the response stream.
 
-# **🐳 Docker**
+# Docker
 
-> Build and run image with [Dockerfile](./docker/Dockerfile) 🏃‍♂️
+Images (primary):
+
+- Docker Hub: `interchouette/evaluator`
+- GHCR: `ghcr.io/interchouette-itc/evaluator`
+- Personal GHCR (optional): `ghcr.io/groussac/evaluator`
+
+The former Hub mirror `gregoshop/evaluator` is **deprecated**.
+
+Build and run from the repo root:
 
 ```shell
-cd docker
-docker build -t evaluator . --force-rm
-
-docker compose up
+make docker-build
+make docker-run
 ```
 
-# 🧙‍♀️ **Development**
+Or:
+
+```shell
+docker build -f docker/Dockerfile -t interchouette/evaluator:latest .
+docker compose -f docker/docker-compose.yml up
+```
+
+Visit http://localhost:4000/
+
+Push `:dev` (after Hub/GHCR login):
+
+```shell
+make docker-build-dev
+make docker-push-dev
+```
+
+CI: `.github/workflows/docker-build-push-dev.yml` (`workflow_dispatch`).
+
+# Development
 
 ## Prerequisites
 
-- npm >= 8.19.2
-- nodejs >= 18.7.0 & < 19
-
-# 🛠️ Usage with npm
-
-Run `npm install` to install the application.
+- Node.js `>=22` on the host (you already have a current Node; agents must not install another)
+- npm `>=11`
+- Docker image build uses `node:26-bookworm-slim` (matches `engines.node`; non-root runtime, see `docker/Dockerfile`)
 
 ```shell
 npm install
@@ -61,51 +84,56 @@ npm install
 
 ## Development server
 
-Run `npm start` for a dev server. Navigate to http://localhost:4200/. The app will automatically reload if you change any of the source files.
-
 ```shell
 npm start
 ```
 
-## Build
+Dev UI: http://localhost:4200/ (API proxied; Nest backend on 3333).
 
-Run `npm run build` to launch Jest test the project. The build artifacts will be stored in the `dist/` directory.
+## Build
 
 ```shell
 npm run build
 ```
 
-# 🦀 Usage with Rust
+Artifacts land in `dist/`. Serve production Node gateway + Nest:
 
-## Install
-
-> 📂 Go to `evaluator` subfolder
-
+```shell
+npm run serve
 ```
+
+Then open http://localhost:4000/
+
+## Test
+
+```shell
+npm test
+```
+
+# Rust CLI
+
+Batch evaluation helper under `./evaluator`:
+
+```shell
 cd ./evaluator
 cargo build
-cargo run
-```
-
-- Five parameters :
-- `-path` or `-p` csv file to load (first column is website domain)
-- `-function` or `-f` the function to evaluate
-- `-nb_threads` or `-n` the number of threads
-- `-timeout` or `-t` the navigation timeout
-- `-search_pattern` or `-s` a pattern to search
-
-  Example
-
-```
 cargo run -- -p All-Live-Magento-Sites.csv -f window.eval -n 5 -s checkout
 ```
 
-# 📝 License
+Parameters:
 
-[GNU GENERAL PUBLIC LICENSE](https://github.com/gRoussac/evaluator/blob/master/LICENSE.md)
+- `-path` / `-p` CSV file (first column is website domain)
+- `-function` / `-f` function to evaluate
+- `-nb_threads` / `-n` thread count
+- `-timeout` / `-t` navigation timeout
+- `-search_pattern` / `-s` pattern to search
 
-### 🦺 Security
+# License
 
-### 🪦 Errors ?
+GNU General Public License v3.0 or later (see `LICENSE` / GitHub).
 
-If you see any typos or errors you can edit the code directly on GitHub and raise a Pull Request on `master` branch, many thanks !
+### Security
+
+### Errors
+
+If you see typos or errors, open a pull request on the default working branch. Thanks.

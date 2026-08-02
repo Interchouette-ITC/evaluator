@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import * as puppeteer from 'puppeteer';
 import template, { START } from "./eval.template";
 import * as Crypto from 'crypto';
-import * as WebSocket from 'ws';
+import type { WebSocket } from 'ws';
 
 import { Fn, Message, MessageResult, Result } from '@evaluator/shared-types';
 import { readFileSync } from 'fs';
@@ -46,7 +46,7 @@ export class PuppeteerResolver {
     }
   }
 
-  static async resolveWs(message: Message, ws: WebSocket) {
+  static async resolveWs(message: Message, ws: WebSocket): Promise<void> {
     ws.send(JSON.stringify('resolve ' + message.url));
     if (!isValidHttpUrl(message.url)) {
       ws.send(JSON.stringify('isValidHttpUrl ? ' + message.url));
@@ -77,9 +77,8 @@ export class PuppeteerResolver {
       ws.send(JSON.stringify('ws closed'));
       ws.close();
       subscription.unsubscribe();
-    }
-    catch (error) {
-      return error;
+    } catch (error) {
+      ws.send(JSON.stringify('error ' + String(error)));
     }
   }
 
@@ -139,10 +138,19 @@ class Puppet {
   }
 
   async getBrowser(): Promise<puppeteer.Browser> {
-    return await puppeteer.launch({ timeout: 3 * 30000 });
+    const executablePath = process.env['PUPPETEER_EXECUTABLE_PATH'];
+    return await puppeteer.launch({
+      timeout: 3 * 30000,
+      ...(executablePath ? { executablePath } : {}),
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+      ],
+    });
   }
 
-  async goto(message: Message): Promise<puppeteer.HTTPResponse | null | void | string> {
+  async goto(message: Message): Promise<string | undefined> {
     const page = await this.getNewPage(message);
     if (!page) {
       return;
@@ -169,21 +177,22 @@ class Puppet {
     this.ws?.send(JSON.stringify('server message.url ' + message.url.trim()));
     console.log('server message.url', message.url.trim());
     let error = false;
-    const result = await page.goto(message.url.trim(), { timeout: this.timeout, waitUntil: ['domcontentloaded', 'networkidle0'] }).catch(err => {
+    await page.goto(message.url.trim(), { timeout: this.timeout, waitUntil: ['domcontentloaded', 'networkidle0'] }).catch(err => {
       this.ws?.send(JSON.stringify('error ' + err.toString()));
       console.error(message.url, url, err);
       error = true;
     });
-    let screenshot = '';
     if (!aborted && !error) {
       this.ws?.send(JSON.stringify('server tries screenshot'));
       console.log('server tries screenshot', message.url.trim());
       const base64 = await page.screenshot({ encoding: "base64" }) as string;
       this.ws?.send(JSON.stringify('screenshot done'));
       console.log('server screenshot');
-      base64 && (screenshot = JSON.stringify(`data:image/png;base64,${base64}`));
+      if (base64) {
+        return JSON.stringify(`data:image/png;base64,${base64}`);
+      }
     }
-    return screenshot || result;
+    return;
   }
 
   getFunction(message: Message) {

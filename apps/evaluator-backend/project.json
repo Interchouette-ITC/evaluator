@@ -2,21 +2,43 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/evaluator-backend/src",
   "projectType": "application",
+  "tags": [
+    "evaluator-backend"
+  ],
   "targets": {
     "build": {
-      "executor": "@nrwl/node:webpack",
-      "outputs": ["{options.outputPath}"],
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
+        "platform": "node",
         "outputPath": "dist/apps/evaluator-backend",
+        "format": [
+          "cjs"
+        ],
+        "bundle": true,
+        "thirdParty": false,
         "main": "apps/evaluator-backend/src/main.ts",
         "tsConfig": "apps/evaluator-backend/tsconfig.app.json",
-        "assets": ["apps/evaluator-backend/src/assets"]
+        "assets": [
+          "apps/evaluator-backend/src/assets"
+        ],
+        "generatePackageJson": false,
+        "external": [
+          "@nestjs/microservices",
+          "@nestjs/websockets",
+          "class-validator",
+          "class-transformer"
+        ],
+        "esbuildOptions": {
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
       },
       "configurations": {
         "production": {
-          "optimization": true,
-          "extractLicenses": true,
-          "inspect": false,
           "fileReplacements": [
             {
               "replace": "apps/evaluator-backend/src/environments/environment.ts",
@@ -27,7 +49,7 @@
       }
     },
     "serve": {
-      "executor": "@nrwl/node:node",
+      "executor": "@nx/js:node",
       "options": {
         "buildTarget": "evaluator-backend:build"
       },
@@ -38,20 +60,26 @@
       }
     },
     "lint": {
-      "executor": "@nrwl/linter:eslint",
-      "outputs": ["{options.outputFile}"],
+      "executor": "@nx/eslint:lint",
+      "outputs": [
+        "{options.outputFile}"
+      ],
       "options": {
-        "lintFilePatterns": ["apps/evaluator-backend/**/*.ts"]
+        "lintFilePatterns": [
+          "apps/evaluator-backend/**/*.ts"
+        ]
       }
     },
     "test": {
-      "executor": "@nrwl/jest:jest",
-      "outputs": ["coverage/apps/evaluator-backend"],
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
       "options": {
-        "jestConfig": "apps/evaluator-backend/jest.config.ts",
-        "passWithNoTests": true
+        "config": "apps/evaluator-backend/vite.config.mts",
+        "reportsDirectory": "coverage/apps/evaluator-backend"
       }
     }
   },
-  "tags": ["evaluator-backend"]
+  "name": "evaluator-backend"
 }
