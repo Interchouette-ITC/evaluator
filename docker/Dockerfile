@@ -3,8 +3,8 @@
 # Build from repo root: docker build -f docker/Dockerfile .
 # Or: make docker-build
 #
-# Security baseline: multi-stage, non-root, minimal COPY, exec-form node entry
-# (kms-secp256k1-api style). Distroless is not used here because Puppeteer needs Chromium.
+# Multi-stage, non-root, minimal COPY, exec-form node entry.
+# Distroless is not used here because Puppeteer needs Chromium at runtime.
 
 ARG NODE_IMAGE=node:26-bookworm-slim
 

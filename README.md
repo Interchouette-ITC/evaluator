@@ -68,17 +68,15 @@ make docker-build-dev
 make docker-push-dev
 ```
 
-### CI / CD (same policy as kms / tvscreener)
+### CI / CD
 
 | Workflow | Trigger | What |
 | --- | --- | --- |
-| `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
-| `docker-build-push-dev.yml` | **manual** `workflow_dispatch` | build/push `:dev` → Hub + GHCR |
-| `release.yml` | GitHub Release `vX.Y.Z` | validate tag = `package.json` version; push `:X.Y.Z` + `:latest` |
+| `ci.yml` | PR / push to `dev` | install dependencies and run `npm run build` |
+| `docker-build-push-dev.yml` | manual | build and push the `:dev` image |
+| `release.yml` | GitHub Release `vX.Y.Z` | publish `:X.Y.Z` and `:latest` (tag must match `package.json` version) |
 
-Secrets (repo Actions): `DOCKER_USERNAME`, `DOCKER_PASSWORD`, `GHCR_USERNAME`, `GHCR_PAT`.
-
-Release: bump `package.json` version → tag `vX.Y.Z` → create GitHub Release → `release.yml` publishes images.
+To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.
 
 # Development
 
