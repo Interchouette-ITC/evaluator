@@ -18,7 +18,7 @@ COMPOSE_PROD ?= docker/docker-compose.yml
 	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
 	docker-push-release-ghcr-personal docker-push-release-ghcr-itc \
-	docker-run docker-stop docker-inspect \
+	docker-run docker-run-log docker-stop docker-inspect \
 	version-show
 
 help:
@@ -28,7 +28,9 @@ help:
 	@echo "  make docker-build-dev      Build and tag :dev (Hub + GHCR names)"
 	@echo "  make docker-push-dev       Push :dev (local interactive logins)"
 	@echo "  make docker-push-release   Tag/push release images (CI uses split targets)"
-	@echo "  make docker-run / docker-stop   Run existing image (no rebuild)"
+	@echo "  make docker-run            Run existing image detached (no rebuild)"
+	@echo "  make docker-run-log        Run foreground with logs (Ctrl+C stops)"
+	@echo "  make docker-stop"
 	@echo "  make version-show"
 	@echo ""
 	@echo "Images: $(HUB_IMAGE) | $(GHCR_ORG_IMAGE) | $(GHCR_PERSONAL_IMAGE)"
@@ -107,6 +109,9 @@ docker-push-release: docker-push-release-hub docker-push-release-ghcr-personal d
 
 docker-run:
 	docker compose -f $(COMPOSE_PROD) up -d --force-recreate
+
+docker-run-log:
+	docker compose -f $(COMPOSE_PROD) up --force-recreate
 
 docker-stop:
 	docker compose -f $(COMPOSE_PROD) down --remove-orphans
