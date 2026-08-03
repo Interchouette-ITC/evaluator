@@ -23,11 +23,13 @@ jobs:
       - name: Install
         run: npm ci
         env:
+          NX_NO_CLOUD: "true"
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
           PUPPETEER_SKIP_DOWNLOAD: "true"
 
       - name: Build
         run: npm run build
         env:
+          NX_NO_CLOUD: "true"
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
           PUPPETEER_SKIP_DOWNLOAD: "true"
