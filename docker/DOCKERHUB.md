@@ -1,6 +1,6 @@
 # evaluator
 
-Evaluate JavaScript on live pages (Puppeteer/Chromium). One image: web UI + Nest API + Rust CLI + MCP.
+Evaluate JavaScript on live pages (Puppeteer or Playwright on distro Chromium). One image: web UI + Nest API + Rust CLI + MCP.
 
 ```bash
 docker pull interchouette/evaluator:dev
@@ -44,6 +44,8 @@ docker run --rm --network host \
 | `ENABLE_MCP` | `1` | Start MCP HTTP beside web |
 | `EVALUATOR_URL` | `http://127.0.0.1:4000` | Gateway for CLI / MCP |
 | `EVALUATOR_MCP_ADDR` | `0.0.0.0:8788` | MCP HTTP bind |
+| `USE_PLAYWRIGHT` | `0` | `1` / `true` → Playwright; else Puppeteer |
+| `PUPPETEER_EXECUTABLE_PATH` | `/usr/bin/chromium` | Chromium binary for both engines |
 
 AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` on stdio.
 

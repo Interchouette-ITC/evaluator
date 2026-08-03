@@ -46,6 +46,7 @@
     "jquery": "4.0.0",
     "js-beautify": "^2.0.3",
     "jsdom": "^30.0.1",
+    "playwright-core": "^1.62.1",
     "promise-worker": "^2.0.1",
     "puppeteer": "^25.4.0",
     "reflect-metadata": "^0.2.2",

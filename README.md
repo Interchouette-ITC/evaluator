@@ -12,9 +12,9 @@ Render will be redeployed from the Interchouette Docker image in a later pass.
 
 ```text
 Browser (Angular SPA)
-    → Express gateway :4000  (static, WS evaluate, GET /evaluate, Puppeteer)
+    → Express gateway :4000  (static, WS evaluate, GET /evaluate)
         → Nest API :3333     (/api/functions)
-        → Chromium           (in the same web image)
+        → Chromium via Puppeteer (default) or Playwright (`USE_PLAYWRIGHT=1`)
 
 Rust CLI / MCP (evaluator-tools image, no Chromium)
     → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
@@ -107,6 +107,7 @@ To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create th
 - Node.js `>=22` on the host (you already have a current Node; agents must not install another)
 - npm `>=11`
 - Docker web image: single `node:26-trixie-slim` multi-stage build with distro Chromium
+- Evaluate engine: Puppeteer by default; set `USE_PLAYWRIGHT=1` to use Playwright against the same `PUPPETEER_EXECUTABLE_PATH` Chromium binary
 
 ```shell
 npm install

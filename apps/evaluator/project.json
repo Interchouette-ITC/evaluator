@@ -132,6 +132,7 @@
         "external": [
           "sqlite3",
           "puppeteer",
+          "playwright-core",
           "express",
           "ws",
           "dotenv",
