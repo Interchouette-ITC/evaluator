@@ -29,7 +29,8 @@
           "@nestjs/microservices",
           "@nestjs/websockets",
           "class-validator",
-          "class-transformer"
+          "class-transformer",
+          "jsdom"
         ],
         "esbuildOptions": {
           "outExtension": {

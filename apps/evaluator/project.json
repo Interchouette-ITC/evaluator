@@ -136,7 +136,8 @@
           "ws",
           "dotenv",
           "express-basic-auth",
-          "http-proxy-middleware"
+          "http-proxy-middleware",
+          "jsdom"
         ],
         "esbuildOptions": {
           "outExtension": {

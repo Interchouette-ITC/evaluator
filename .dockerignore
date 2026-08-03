@@ -15,6 +15,7 @@ node_modules
 .nx
 .angular
 dist
+.docker-fast-context
 tmp
 out-tsc
 coverage

@@ -54,6 +54,9 @@ jobs:
       - name: Set up Make
         run: sudo apt-get install -y make
 
+      - name: Build Chromium base image
+        run: make docker-build-base
+
       - name: Build Docker image
         run: make docker-build TAG=latest APP_VERSION=${{ needs.validate.outputs.version }}
 

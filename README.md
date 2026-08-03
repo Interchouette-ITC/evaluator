@@ -8,6 +8,26 @@ Typically helps with deobfuscating https://stackoverflow.com/questions/32977908/
 
 Render will be redeployed from the Interchouette Docker image in a later pass.
 
+## Architecture
+
+```text
+Browser (Angular SPA)
+    → Express gateway :4000  (static, WS evaluate, GET /evaluate, Puppeteer)
+        → Nest API :3333     (/api/functions)
+        → Chromium           (distro binary in evaluator-base)
+
+Rust CLI / MCP (evaluator-tools image, no Chromium)
+    → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
+```
+
+| Image | Role |
+| --- | --- |
+| `interchouette/evaluator-base:node26-trixie` | Node 26 + apt Chromium/fonts (rebuild rarely) |
+| `interchouette/evaluator` | Web stack runtime `FROM` the base |
+| `interchouette/evaluator-tools` | Rust CLI + thin MCP (stdio / HTTP `:8788`) |
+
+Compose profiles: `web` | `tools` | both.
+
 ## References
 
 - https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store
@@ -39,15 +59,28 @@ Production / Docker Node gateway listens on port **4000**. A screenshot of the w
 
 Images (primary):
 
-- Docker Hub: `interchouette/evaluator`
+- Docker Hub: `interchouette/evaluator` (+ `evaluator-base`, `evaluator-tools`)
 - GHCR: `ghcr.io/interchouette-itc/evaluator`
 - Personal GHCR (optional): `ghcr.io/groussac/evaluator`
 
 The former Hub mirror `gregoshop/evaluator` is **deprecated**.
 
+### Faster builds
+
+1. **`evaluator-base`** — Chromium + fonts once (`make docker-build-base`). App image does not re-apt Chromium.
+2. **BuildKit** — `DOCKER_BUILDKIT=1` (Makefile default); npm cache mount on `npm ci` / build; apt cache on the base Dockerfile.
+3. **sqlite3** — N-API prebuilds work on `node:26-trixie-slim` (glibc 2.41). No `npm rebuild` / g++ in the builder. Reintroduce rebuild only if `require('sqlite3')` fails in the image.
+
 Build and run from the repo root:
 
 ```shell
+# Fast (preferred): build on the host, package in Docker
+npm run build
+make docker-build-fast
+make docker-run
+
+# Slow full in-Docker build (CI / clean repro only)
+make docker-build-base   # first time / when Dockerfile.base changes
 make docker-build
 make docker-run
 ```
@@ -55,11 +88,23 @@ make docker-run
 Or:
 
 ```shell
-docker build -f docker/Dockerfile -t interchouette/evaluator:latest .
-docker compose -f docker/docker-compose.yml up
+docker build -f docker/Dockerfile.base -t interchouette/evaluator-base:node26-trixie .
+docker build -f docker/Dockerfile --build-arg BASE_IMAGE=interchouette/evaluator-base:node26-trixie -t interchouette/evaluator:latest .
+docker compose -f docker/docker-compose.yml --profile web up
 ```
 
 Visit http://localhost:4000/
+
+CLI / MCP (web must be reachable via `EVALUATOR_URL`):
+
+```shell
+make docker-build-tools
+make docker-run-cli ARGS='-p /data/test.csv -n 1 -f window.eval'
+# CSV dir is mounted at /data. Host-only web:
+# EVALUATOR_URL=http://host.docker.internal:4000 make docker-run-cli ARGS='-p /data/test.csv -n 1'
+make docker-run-mcp          # stdio
+make docker-run-mcp-http     # http://localhost:8788/mcp
+```
 
 Push `:dev` (after Hub/GHCR login):
 
@@ -73,7 +118,8 @@ make docker-push-dev
 | Workflow | Trigger | What |
 | --- | --- | --- |
 | `ci.yml` | PR / push to `dev` | install dependencies and run `npm run build` |
-| `docker-build-push-dev.yml` | manual | build and push the `:dev` image |
+| `docker-build-push-base.yml` | manual / Dockerfile.base change | build and push Chromium base |
+| `docker-build-push-dev.yml` | manual | build base + push `:dev` app image |
 | `release.yml` | GitHub Release `vX.Y.Z` | publish `:X.Y.Z` and `:latest` (tag must match `package.json` version) |
 
 To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.
@@ -84,7 +130,7 @@ To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create th
 
 - Node.js `>=22` on the host (you already have a current Node; agents must not install another)
 - npm `>=11`
-- Docker image build uses `node:26-bookworm-slim` (matches `engines.node`; non-root runtime, see `docker/Dockerfile`)
+- Docker web image: builder `node:26-trixie-slim`, runtime `FROM` `evaluator-base` (Chromium)
 
 ```shell
 npm install
@@ -120,21 +166,36 @@ npm test
 
 # Rust CLI
 
-Batch evaluation helper under `./evaluator`:
+Batch evaluation helper under `./evaluator` — default mode calls the web gateway:
 
 ```shell
 cd ./evaluator
 cargo build
-cargo run -- -p All-Live-Magento-Sites.csv -f window.eval -n 5 -s checkout
+# web on :4000
+cargo run -- -p test.csv -f window.eval -n 1
+# or: EVALUATOR_URL=http://127.0.0.1:4000 cargo run -- -p All-Live-Magento-Sites.csv -f window.eval -n 5
 ```
 
 Parameters:
 
 - `-path` / `-p` CSV file (first column is website domain)
 - `-function` / `-f` function to evaluate
-- `-nb_threads` / `-n` thread count
-- `-timeout` / `-t` navigation timeout
-- `-search_pattern` / `-s` pattern to search
+- `-nb_threads` / `-n` concurrency
+- `--gateway` / `EVALUATOR_URL` gateway base (default `http://127.0.0.1:4000`)
+- `--legacy-pupet` deprecated local `node pupet.js` path
+- `-timeout` / `-t`, `-search_pattern` / `-s` — legacy pupet (HTTP mode only filters printed body for `-s`)
+
+See [evaluator/README.md](evaluator/README.md) for terrain notes.
+
+# MCP
+
+Thin server in [`tools/mcp`](tools/mcp): tools `evaluate` and `list_functions` against `EVALUATOR_URL`.
+
+```shell
+cd tools/mcp && npm ci
+EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs           # stdio
+EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp
+```
 
 # License
 

@@ -23,6 +23,27 @@ const apiProxy = proxy({
   changeOrigin: true,
   // Mounted at `/api`, HPM forwards a stripped path (`/functions`). Nest serves `/api/functions`.
   pathRewrite: (path) => `/api${path}`,
+  proxyTimeout: 30_000,
+  timeout: 30_000,
+  on: {
+    error(err, _req, res) {
+      console.error('[api-proxy]', err.message);
+      if (
+        res &&
+        'writeHead' in res &&
+        typeof res.writeHead === 'function' &&
+        !res.headersSent
+      ) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(
+          JSON.stringify({
+            error: 'api_upstream_unavailable',
+            detail: err.message,
+          })
+        );
+      }
+    },
+  },
 });
 
 export function createApp(): express.Express {

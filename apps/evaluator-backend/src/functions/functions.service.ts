@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UtilFunctionsService } from '@evaluator-backend/util-functions';
+import { UtilFunctionsService } from '@evaluator-backend/util-functions/nest';
 
 @Injectable()
 export class FunctionsService {

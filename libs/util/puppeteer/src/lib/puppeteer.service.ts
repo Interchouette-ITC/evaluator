@@ -4,12 +4,10 @@ import template, { START } from "./eval.template";
 import * as Crypto from 'crypto';
 import type { WebSocket } from 'ws';
 
-import { Fn, Message, MessageResult, Result } from '@evaluator/shared-types';
-import { readFileSync } from 'fs';
+import { Message, MessageResult, Result } from '@evaluator/shared-types';
 import { filter, map, pipe, Subject, take } from 'rxjs';
-import { Entries } from '@evaluator-backend/util-functions';
+import { resolveFunctionExpression } from '@evaluator-backend/util-functions';
 
-import * as Path from 'path';
 import { SqliteService } from '@evaluator/sqlite';
 
 export class PuppeteerResolver {
@@ -196,28 +194,7 @@ class Puppet {
   }
 
   getFunction(message: Message) {
-    const filename = "functions.json";
-    const fnSha256 = message.fn;
-    const path = Path.join(__dirname, filename);
-    const dist = '/dist/';
-    const functions_path = path.substring(0, path.lastIndexOf(dist)) + dist + filename;
-    let functions: Entries = {};
-    try {
-      functions = JSON.parse(readFileSync(functions_path, 'utf8'));
-    }
-    catch {
-      console.error(`can't read functions file ` + functions_path);
-    }
-    let fnGroup = '';
-    const func = Object.values(functions).map((group: Fn[], index: number) => {
-      const groupfound = group.find((fn: Fn) => {
-        return fn.sha256 === fnSha256;
-      });
-      groupfound && (fnGroup = Object.keys(functions)[index]);
-      return groupfound;
-    }).filter(x => x).pop();
-    fnGroup = func?.prototype ? fnGroup.replace('String', 'String.prototype') : fnGroup;
-    return [fnGroup, func?.property].join('.');
+    return resolveFunctionExpression(message.fn || '');
   }
 
   async getNewPage(message: Message) {

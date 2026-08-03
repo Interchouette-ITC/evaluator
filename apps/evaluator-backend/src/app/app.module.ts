@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { FunctionsController } from '../functions/functions.controller';
 import { FunctionsService } from '../functions/functions.service';
-import { functions_path, UtilFunctionsService } from '@evaluator-backend/util-functions';
+import { resolveFunctionsPath } from '@evaluator-backend/util-functions';
+import { UtilFunctionsService } from '@evaluator-backend/util-functions/nest';
 
 import { AppController } from './app.controller';
 
@@ -12,8 +13,9 @@ import { AppController } from './app.controller';
     FunctionsService,
     UtilFunctionsService,
     {
-      provide: 'FUNCTIONS_PATH', useValue: functions_path
-    }
+      provide: 'FUNCTIONS_PATH',
+      useFactory: () => resolveFunctionsPath(),
+    },
   ],
 })
-export class AppModule { }
+export class AppModule {}

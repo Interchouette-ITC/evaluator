@@ -1,0 +1,18 @@
+{
+  "name": "evaluator-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Thin MCP server: evaluate + list_functions via evaluator web gateway",
+  "bin": {
+    "evaluator-mcp": "./server.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "express": "^5.1.0",
+    "zod": "^3.25.0"
+  }
+}

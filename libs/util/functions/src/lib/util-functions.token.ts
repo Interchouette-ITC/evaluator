@@ -1,6 +1,26 @@
-import * as Path from 'path';
-const filename = "functions.json";
-const path = Path.join(__dirname, filename);
-const dist = '/dist/';
-const functions_path = path.substring(0, path.lastIndexOf(dist)) + dist + filename;
-export { functions_path };
+import { dirname, join, resolve } from 'path';
+import { mkdirSync } from 'fs';
+
+/**
+ * Writable catalog path — no __dirname /dist/ string surgery.
+ * Priority: FUNCTIONS_PATH → next to SQLITE_PATH → cwd/data/functions.json
+ */
+export function resolveFunctionsPath(): string {
+  const fromEnv = process.env['FUNCTIONS_PATH']?.trim();
+  if (fromEnv) {
+    return resolve(fromEnv);
+  }
+  const sqlite = process.env['SQLITE_PATH']?.trim();
+  if (sqlite) {
+    return join(dirname(resolve(sqlite)), 'functions.json');
+  }
+  return resolve(process.cwd(), 'data', 'functions.json');
+}
+
+/** Ensure parent dir exists (Docker volume /app/data, local ./data). */
+export function ensureFunctionsDir(path: string = resolveFunctionsPath()): void {
+  mkdirSync(dirname(path), { recursive: true });
+}
+
+/** @deprecated use resolveFunctionsPath() */
+export const functions_path = resolveFunctionsPath();

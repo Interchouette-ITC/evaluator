@@ -17,6 +17,9 @@
     "baseUrl": ".",
     "paths": {
       "@evaluator-backend/util-functions": ["libs/util/functions/src/index.ts"],
+      "@evaluator-backend/util-functions/nest": [
+        "libs/util/functions/src/lib/util-functions.service.ts"
+      ],
       "@evaluator/data-access-puppeteer": [
         "libs/data-access/puppeteer/src/index.ts"
       ],

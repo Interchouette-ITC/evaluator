@@ -1,0 +1,41 @@
+# syntax=docker/dockerfile:1
+#
+# Fast path: build on the HOST, package in Docker (no nx inside the image).
+#   npm run build
+#   make docker-build-fast
+#
+# Uses evaluator-base (Chromium). npm ci --omit=dev only (~deps), not Angular.
+
+ARG BASE_IMAGE=interchouette/evaluator-base:node26-trixie
+ARG NODE_IMAGE=node:26-trixie-slim
+
+FROM ${NODE_IMAGE} AS deps
+WORKDIR /app
+ENV PUPPETEER_SKIP_DOWNLOAD=true \
+    PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
+
+FROM ${BASE_IMAGE} AS runtime
+WORKDIR /app
+
+RUN mkdir -p /app/data \
+  && chown -R app:app /app/data
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    PORT=4000 \
+    NODE_ENV=production \
+    SQLITE_PATH=/app/data/database.db \
+    FUNCTIONS_PATH=/app/data/functions.json
+
+COPY --from=deps --chown=app:app /app/package.json /app/package-lock.json ./
+COPY --from=deps --chown=app:app /app/node_modules ./node_modules
+COPY --chown=app:app dist ./dist
+COPY --chown=app:app docker/serve.mjs ./docker/serve.mjs
+
+USER app
+EXPOSE 4000
+
+CMD ["node", "docker/serve.mjs"]
