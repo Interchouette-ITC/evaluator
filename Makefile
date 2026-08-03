@@ -109,18 +109,25 @@ docker-push-release-ghcr-itc:
 docker-push-release: docker-push-release-hub docker-push-release-ghcr-personal docker-push-release-ghcr-itc
 
 docker-run:
+	docker compose -f $(COMPOSE_PROD) down --remove-orphans 2>/dev/null || true
+	docker rm -f $(APP_NAME) 2>/dev/null || true
 	docker compose -f $(COMPOSE_PROD) up --force-recreate
 
 docker-run-detached:
+	docker compose -f $(COMPOSE_PROD) down --remove-orphans 2>/dev/null || true
+	docker rm -f $(APP_NAME) 2>/dev/null || true
 	docker compose -f $(COMPOSE_PROD) up -d --force-recreate
 
 docker-run-dev:
 	@echo "Starting evaluator (foreground, compose --build). UI: http://localhost:4000"
 	@echo "For background without rebuild: make docker-run-detached"
+	docker compose -f $(COMPOSE_PROD) down --remove-orphans 2>/dev/null || true
+	docker rm -f $(APP_NAME) 2>/dev/null || true
 	docker compose -f $(COMPOSE_PROD) up --build --force-recreate
 
 docker-stop:
 	docker compose -f $(COMPOSE_PROD) down --remove-orphans
+	docker rm -f $(APP_NAME) 2>/dev/null || true
 
 docker-inspect:
 	docker image inspect $(HUB_IMAGE):$(TAG)
