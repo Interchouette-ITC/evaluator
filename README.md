@@ -16,16 +16,16 @@ Browser (Angular SPA)
         → Nest API :3333     (/api/functions)
         → Chromium via Puppeteer (default) or Playwright (`USE_PLAYWRIGHT=1`)
 
-Rust CLI / MCP (evaluator-tools image, no Chromium)
+Same image also ships Rust CLI + MCP (stdio / HTTP :8788; default ENABLE_MCP=1)
     → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
 ```
 
 | Image | Role |
 | --- | --- |
-| `interchouette/evaluator` | Single web image (Node + Chromium + app) |
-| `interchouette/evaluator-tools` | Optional Rust CLI + thin MCP (stdio / HTTP `:8788`) |
+| `interchouette/evaluator` | All-in-one: web + Chromium + Rust CLI + MCP |
+| `interchouette/evaluator-tools` | Legacy slim CLI/MCP only (optional local build) |
 
-Compose profiles: `web` | `tools` | both.
+Compose profile: `web` (ports `4000` + `8788`).
 
 ## References
 
@@ -58,11 +58,11 @@ Production / Docker Node gateway listens on port **4000**. A screenshot of the w
 
 Images (primary):
 
-- Docker Hub: `interchouette/evaluator` (+ optional `evaluator-tools`)
+- Docker Hub: `interchouette/evaluator` (web + CLI + MCP; Puppeteer or `USE_PLAYWRIGHT=1`)
 - GHCR: `ghcr.io/interchouette-itc/evaluator`
 - Personal GHCR (optional): `ghcr.io/groussac/evaluator`
 
-The former Hub mirror `gregoshop/evaluator` is **deprecated**. One web image only (Chromium included). No separate `evaluator-base`.
+The former Hub mirror `gregoshop/evaluator` is **deprecated**. No separate `evaluator-base`. MCP HTTP is on by default (`ENABLE_MCP=0` to disable).
 
 ### Run CI-built `:dev` (preferred locally)
 
@@ -81,13 +81,12 @@ make docker-build-dev   # or make docker-build
 
 Optional local packaging after `npm run build`: `make docker-build-fast`.
 
-CLI / MCP (web must be reachable via `EVALUATOR_URL`):
+CLI / MCP (against a running gateway, or built into the all-in-one image):
 
 ```shell
-make docker-build-tools
 make docker-run-cli ARGS='-p /data/test.csv -n 1 -f window.eval'
-make docker-run-mcp
-make docker-run-mcp-http
+make docker-run-mcp          # stdio
+# MCP HTTP is published on :8788 with make docker-run (ENABLE_MCP=1)
 ```
 
 ### CI / CD

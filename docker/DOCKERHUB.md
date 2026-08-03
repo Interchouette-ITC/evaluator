@@ -1,6 +1,8 @@
 # evaluator
 
-Evaluate JavaScript on live pages (Puppeteer or Playwright on distro Chromium). One image: web UI + Nest API + Rust CLI + MCP.
+Evaluate JavaScript on live pages with **Puppeteer** (default) or **Playwright** (`USE_PLAYWRIGHT=1`), on distro Chromium.
+
+**One image:** web UI + Nest API + Rust CLI + MCP (stdio / Streamable HTTP).
 
 ```bash
 docker pull interchouette/evaluator:dev
@@ -23,8 +25,11 @@ IMAGE=interchouette/evaluator:dev
 # Web + MCP HTTP (default)
 docker run -d -p 4000:4000 -p 8788:8788 "$IMAGE"
 
-# Web only
+# Web only (no MCP sidecar)
 docker run -d -p 4000:4000 -e ENABLE_MCP=0 "$IMAGE"
+
+# Web + Playwright engine + MCP
+docker run -d -p 4000:4000 -p 8788:8788 -e USE_PLAYWRIGHT=1 "$IMAGE"
 
 # MCP stdio (gateway must be reachable)
 docker run --rm -i --network host -e EVALUATOR_URL=http://127.0.0.1:4000 "$IMAGE" mcp
@@ -41,13 +46,13 @@ docker run --rm --network host \
 
 | Env | Default | Meaning |
 | --- | --- | --- |
-| `ENABLE_MCP` | `1` | Start MCP HTTP beside web |
+| `ENABLE_MCP` | `1` | Start MCP HTTP beside web (`0` = web only) |
+| `USE_PLAYWRIGHT` | `0` | `1` / `true` → Playwright; else Puppeteer |
 | `EVALUATOR_URL` | `http://127.0.0.1:4000` | Gateway for CLI / MCP |
 | `EVALUATOR_MCP_ADDR` | `0.0.0.0:8788` | MCP HTTP bind |
-| `USE_PLAYWRIGHT` | `0` | `1` / `true` → Playwright; else Puppeteer |
 | `PUPPETEER_EXECUTABLE_PATH` | `/usr/bin/chromium` | Chromium binary for both engines |
 
-AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` on stdio.
+AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` on stdio. MCP tool responses are capped at **300k** characters.
 
 ## Tags
 
