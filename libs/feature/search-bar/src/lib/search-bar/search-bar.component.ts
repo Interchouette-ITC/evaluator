@@ -6,6 +6,10 @@ import { Functions, Message } from '@evaluator/shared-types';
 import { InputComponent } from 'libs/ui/input/src/lib/input/input.component';
 import { Subscription } from 'rxjs';
 
+/** Demo page that exercises `eval` in-browser (W3Schools Tryit). */
+export const DEFAULT_EVAL_URL =
+  'https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval';
+
 @Component({
   selector: 'evaluator-search-bar',
   standalone: true,
@@ -21,8 +25,8 @@ export class SearchBarComponent implements OnInit, OnDestroy {
   @Input() fn!: string;
   @ViewChild('select') private select!: ElementRef;
 
-  url = '';
-  isValid = false;
+  url = DEFAULT_EVAL_URL;
+  isValid = true;
   functions: Functions = {};
   functionsKeys?: string[];
   private _url_value = ''; // memoize value to compare
