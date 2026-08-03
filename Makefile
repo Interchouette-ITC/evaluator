@@ -28,7 +28,7 @@ help:
 	@echo "  make docker-build-dev      Build and tag :dev (Hub + GHCR names)"
 	@echo "  make docker-push-dev       Push :dev (local interactive logins)"
 	@echo "  make docker-push-release   Tag/push release images (CI uses split targets)"
-	@echo "  make docker-run / docker-stop"
+	@echo "  make docker-run / docker-stop   Run existing image (no rebuild)"
 	@echo "  make version-show"
 	@echo ""
 	@echo "Images: $(HUB_IMAGE) | $(GHCR_ORG_IMAGE) | $(GHCR_PERSONAL_IMAGE)"
@@ -106,7 +106,7 @@ docker-push-release-ghcr-itc:
 docker-push-release: docker-push-release-hub docker-push-release-ghcr-personal docker-push-release-ghcr-itc
 
 docker-run:
-	docker compose -f $(COMPOSE_PROD) up -d --build --force-recreate
+	docker compose -f $(COMPOSE_PROD) up -d --force-recreate
 
 docker-stop:
 	docker compose -f $(COMPOSE_PROD) down --remove-orphans
