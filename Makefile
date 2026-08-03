@@ -1,3 +1,14 @@
+.PHONY: help \
+	docker-build docker-build-fast docker-build-no-cache docker-build-dev \
+	docker-build-tools docker-build-tools-dev \
+	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
+	docker-push-tools-dev-hub docker-push-tools-dev-ghcr-personal docker-push-tools-dev-ghcr-itc \
+	docker-push-release docker-push-release-hub \
+	docker-push-release-ghcr-personal docker-push-release-ghcr-itc \
+	docker-pull-dev docker-run docker-run-detached docker-run-dev docker-stop docker-inspect \
+	docker-run-cli docker-run-mcp docker-run-mcp-http \
+	version-show
+
 # evaluator - developer targets
 
 APP_NAME ?= evaluator
@@ -13,38 +24,28 @@ DOCKER_BUILDKIT ?= 1
 CI ?= 0
 COMPOSE_PROD ?= docker/docker-compose.yml
 
+# Optional Chromium-free slim image (legacy; not published by CI)
 TOOLS_HUB_IMAGE ?= interchouette/evaluator-tools
 TOOLS_GHCR_PERSONAL ?= ghcr.io/groussac/evaluator-tools
 TOOLS_GHCR_ORG ?= ghcr.io/interchouette-itc/evaluator-tools
 
 .DEFAULT_GOAL := help
 
-.PHONY: help \
-	docker-build docker-build-fast docker-build-no-cache docker-build-dev \
-	docker-build-tools docker-build-tools-dev \
-	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
-	docker-push-tools-dev-hub docker-push-tools-dev-ghcr-personal docker-push-tools-dev-ghcr-itc \
-	docker-push-release docker-push-release-hub \
-	docker-push-release-ghcr-personal docker-push-release-ghcr-itc \
-	docker-pull-dev docker-run docker-run-detached docker-run-dev docker-stop docker-inspect \
-	docker-run-cli docker-run-mcp docker-run-mcp-http \
-	version-show
-
 help:
 	@echo "evaluator targets"
 	@echo ""
 	@echo "  make docker-pull-dev       Pull Hub :dev (preferred local test)"
-	@echo "  make docker-run            Run pulled/local image foreground (no rebuild)"
+	@echo "  make docker-run            Web :4000 + MCP HTTP :8788 (ENABLE_MCP=1)"
 	@echo "  make docker-run-detached   Same, detached"
-	@echo "  make docker-build-dev      Full monolith build + :dev tags (CI)"
-	@echo "  make docker-build          Full monolith build :$(TAG) + :$(APP_VERSION)"
-	@echo "  make docker-build-fast     Optional: host npm run build + package"
-	@echo "  make docker-build-tools    Build $(TOOLS_HUB_IMAGE):$(TAG) (CLI + MCP)"
-	@echo "  make docker-push-dev       Push :dev (local interactive logins)"
+	@echo "  make docker-build-dev      All-in-one build + :dev tags (CI)"
+	@echo "  make docker-build          All-in-one :$(TAG) + :$(APP_VERSION)"
+	@echo "  make docker-build-fast     Optional: host npm run build + package (web-only)"
+	@echo "  make docker-run-cli        ARGS='-p /data/test.csv -n 1' (needs gateway up)"
+	@echo "  make docker-run-mcp        MCP stdio against local :4000"
 	@echo "  make docker-stop"
 	@echo "  make version-show"
 	@echo ""
-	@echo "Images: $(HUB_IMAGE) | $(GHCR_ORG_IMAGE) | $(TOOLS_HUB_IMAGE)"
+	@echo "Images: $(HUB_IMAGE) | $(GHCR_ORG_IMAGE)"
 	@echo "Overrides: HUB_IMAGE=... APP_VERSION=... CI=0|1 TAG=... ARGS=..."
 
 version-show:
@@ -92,6 +93,7 @@ docker-build-dev:
 		-f $(DOCKERFILE) \
 		.
 
+# Optional slim CLI+MCP (no Chromium) — not published by CI
 docker-build-tools:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
 		-t $(APP_NAME)-tools:$(TAG) \
@@ -178,25 +180,29 @@ docker-run-detached:
 	docker compose -f $(COMPOSE_PROD) --profile web up -d --force-recreate --pull always
 
 docker-run-dev:
-	@echo "Starting evaluator (foreground, compose --build). UI: http://localhost:4000"
+	@echo "Starting evaluator (foreground, compose --build). UI: http://localhost:4000 MCP: :8788"
 	@echo "Prefer: make docker-pull-dev && make docker-run"
 	docker compose -f $(COMPOSE_PROD) --profile web down --remove-orphans 2>/dev/null || true
 	docker rm -f $(APP_NAME) 2>/dev/null || true
 	docker compose -f $(COMPOSE_PROD) --profile web up --build --force-recreate
 
 docker-run-cli:
-	docker compose -f $(COMPOSE_PROD) --profile tools run --rm --no-deps evaluator-tools \
-		evaluator $(ARGS)
+	docker run --rm --network host \
+		-e EVALUATOR_URL=http://127.0.0.1:4000 \
+		-v $(CURDIR)/evaluator:/data:ro \
+		$(HUB_IMAGE):dev evaluator $(ARGS)
 
 docker-run-mcp:
-	docker compose -f $(COMPOSE_PROD) --profile tools run --rm -i --no-deps evaluator-tools \
-		node /app/mcp/server.mjs
+	docker run --rm -i --network host \
+		-e EVALUATOR_URL=http://127.0.0.1:4000 \
+		$(HUB_IMAGE):dev mcp
 
 docker-run-mcp-http:
-	docker compose -f $(COMPOSE_PROD) --profile tools up evaluator-mcp-http
+	@echo "MCP HTTP is published on :8788 when ENABLE_MCP=1 (default with make docker-run)"
+	@echo "Or: docker run --rm -p 8788:8788 -e EVALUATOR_URL=http://host.docker.internal:4000 $(HUB_IMAGE):dev mcp --http"
 
 docker-stop:
-	docker compose -f $(COMPOSE_PROD) --profile web --profile tools down --remove-orphans
+	docker compose -f $(COMPOSE_PROD) --profile web down --remove-orphans
 	docker rm -f $(APP_NAME) 2>/dev/null || true
 
 docker-inspect:

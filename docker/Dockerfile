@@ -1,10 +1,24 @@
 # syntax=docker/dockerfile:1
 
-# Single image: Node build + runtime with distro Chromium.
-# Build from repo root: docker build -f docker/Dockerfile .
-# Or: make docker-build / make docker-build-dev
+# All-in-one: web (Chromium) + Rust CLI + MCP (stdio / HTTP).
+# Default: web :4000 + MCP HTTP :8788. ENABLE_MCP=0 → web only.
+#   docker run … mcp              # stdio
+#   docker run … mcp --http       # HTTP only
+#   docker run … evaluator -p …   # Rust CLI
 
 ARG NODE_IMAGE=node:26-trixie-slim
+ARG RUST_IMAGE=rust:1.85-bookworm
+
+FROM ${RUST_IMAGE} AS rust-builder
+WORKDIR /src
+COPY evaluator/ ./
+RUN cargo build --release
+
+FROM ${NODE_IMAGE} AS mcp-deps
+WORKDIR /mcp
+COPY tools/mcp/package.json tools/mcp/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
 
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
@@ -15,7 +29,6 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
     NX_NO_CLOUD=true
 
 COPY package.json package-lock.json ./
-# sqlite3 N-API prebuilds work on trixie (glibc 2.41); no rebuild / g++ needed.
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
@@ -50,14 +63,23 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PORT=4000 \
     NODE_ENV=production \
     SQLITE_PATH=/app/data/database.db \
-    FUNCTIONS_PATH=/app/data/functions.json
+    FUNCTIONS_PATH=/app/data/functions.json \
+    ENABLE_MCP=1 \
+    EVALUATOR_URL=http://127.0.0.1:4000 \
+    EVALUATOR_MCP_ADDR=0.0.0.0:8788
 
 COPY --from=builder --chown=app:app /app/package.json /app/package-lock.json ./
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/dist ./dist
+COPY --from=rust-builder /src/target/release/evaluator /usr/local/bin/evaluator
+COPY --from=mcp-deps /mcp/node_modules /app/mcp/node_modules
+COPY --chown=app:app tools/mcp/package.json tools/mcp/server.mjs /app/mcp/
 COPY --chown=app:app docker/serve.mjs ./docker/serve.mjs
+COPY --chown=app:app docker/entrypoint.sh ./docker/entrypoint.sh
+RUN chmod +x /app/docker/entrypoint.sh /usr/local/bin/evaluator
 
 USER app
-EXPOSE 4000
+EXPOSE 4000 8788
 
-CMD ["node", "docker/serve.mjs"]
+ENTRYPOINT ["/app/docker/entrypoint.sh"]
+CMD ["web"]

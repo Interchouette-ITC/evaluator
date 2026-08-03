@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 #
-# CLI + thin MCP (no Chromium). Evaluate requires the web image/gateway.
-#   make docker-build-tools
+# Legacy Chromium-free CLI + MCP. Prefer the all-in-one docker/Dockerfile.
+# Evaluate still needs a gateway (EVALUATOR_URL). Local only: make docker-build-tools
 
 ARG RUST_IMAGE=rust:1.85-bookworm
 ARG NODE_IMAGE=node:26-trixie-slim

@@ -30,7 +30,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build Docker image :dev (monolith)
+      - name: Build Docker image :dev (all-in-one)
         run: make docker-build-dev
 
       - name: Push :dev to Docker Hub
@@ -42,7 +42,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: interchouette/evaluator
-          short-description: Evaluate JS on live pages (web) + companion Rust CLI/MCP image
+          short-description: Evaluate JS on live pages — web + Rust CLI + MCP (all-in-one)
           readme-filepath: docker/DOCKERHUB.md
 
       - name: Log in to GHCR
@@ -57,24 +57,3 @@ jobs:
 
       - name: Push :dev to org GHCR
         run: make docker-push-dev-ghcr-itc
-
-      - name: Build tools image :dev (Rust CLI + MCP)
-        run: make docker-build-tools-dev
-
-      - name: Push tools :dev to Docker Hub
-        run: make docker-push-tools-dev-hub
-
-      - name: Docker Hub description (evaluator-tools)
-        uses: peter-evans/dockerhub-description@v4
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: interchouette/evaluator-tools
-          short-description: Rust CLI + MCP client for interchouette/evaluator
-          readme-filepath: docker/DOCKERHUB.tools.md
-
-      - name: Push tools :dev to personal GHCR
-        run: make docker-push-tools-dev-ghcr-personal
-
-      - name: Push tools :dev to org GHCR
-        run: make docker-push-tools-dev-ghcr-itc

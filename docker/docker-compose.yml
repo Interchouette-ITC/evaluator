@@ -2,49 +2,26 @@ services:
   evaluator:
     profiles: ["web"]
     container_name: evaluator
-    # Prefer CI-built images: make docker-pull-dev && make docker-run
     image: interchouette/evaluator:dev
     ports:
       - "4000:4000"
+      - "8788:8788"
     environment:
       - PORT=4000
+      - ENABLE_MCP=1
+      - EVALUATOR_URL=http://127.0.0.1:4000
+      - EVALUATOR_MCP_ADDR=0.0.0.0:8788
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - SQLITE_PATH=/app/data/database.db
       - FUNCTIONS_PATH=/app/data/functions.json
     volumes:
       - evaluator-data:/app/data
-    # Do not pin docker/chrome.json: recent runc needs syscalls that profile denied,
-    # and a Chrome-only allowlist also breaks Node startup. Default Docker seccomp is fine.
-
-  evaluator-tools:
-    profiles: ["tools"]
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.tools
-    image: interchouette/evaluator-tools:latest
-    environment:
-      - EVALUATOR_URL=${EVALUATOR_URL:-http://evaluator:4000}
-    volumes:
       - ../evaluator:/data:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  evaluator-mcp-http:
-    profiles: ["tools"]
-    image: interchouette/evaluator-tools:latest
-    container_name: evaluator-mcp
-    environment:
-      - EVALUATOR_URL=${EVALUATOR_URL:-http://evaluator:4000}
-      - EVALUATOR_MCP_HTTP=1
-      - EVALUATOR_MCP_ADDR=0.0.0.0:8788
-    command: ["node", "/app/mcp/server.mjs", "--http"]
-    ports:
-      - "8788:8788"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
   evaluator-data:
 
+# All-in-one: web :4000 + MCP HTTP :8788 (ENABLE_MCP=0 for web only)
 # make docker-pull-dev && make docker-run
-# Visit http://localhost:4000/
+# CLI:  docker compose … run --rm evaluator evaluator -p /data/test.csv -n 1
+# stdio: docker run -i --rm --network host -e EVALUATOR_URL=http://127.0.0.1:4000 interchouette/evaluator:dev mcp

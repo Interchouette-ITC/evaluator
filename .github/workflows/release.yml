@@ -74,7 +74,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: interchouette/evaluator
-          short-description: Evaluate JS on live pages (web) + companion Rust CLI/MCP image
+          short-description: Evaluate JS on live pages — web + Rust CLI + MCP (all-in-one)
           readme-filepath: docker/DOCKERHUB.md
 
       - name: Log in to GHCR
