@@ -13,7 +13,7 @@ services:
     # Do not pin docker/chrome.json: recent runc needs syscalls that profile denied,
     # and a Chrome-only allowlist also breaks Node startup. Default Docker seccomp is fine.
 
-# make docker-run  (or: docker compose -f docker/docker-compose.yml up)
+# make docker-run (foreground) / docker-run-detached / docker-run-dev
 # Visit http://localhost:4000/
 #
 # Legacy Hub mirror gregoshop/evaluator is deprecated; use interchouette/evaluator

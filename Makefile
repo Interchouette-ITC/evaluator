@@ -18,7 +18,7 @@ COMPOSE_PROD ?= docker/docker-compose.yml
 	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
 	docker-push-release-ghcr-personal docker-push-release-ghcr-itc \
-	docker-run docker-run-log docker-stop docker-inspect \
+	docker-run docker-run-detached docker-run-dev docker-stop docker-inspect \
 	version-show
 
 help:
@@ -28,8 +28,9 @@ help:
 	@echo "  make docker-build-dev      Build and tag :dev (Hub + GHCR names)"
 	@echo "  make docker-push-dev       Push :dev (local interactive logins)"
 	@echo "  make docker-push-release   Tag/push release images (CI uses split targets)"
-	@echo "  make docker-run            Run existing image detached (no rebuild)"
-	@echo "  make docker-run-log        Run foreground with logs (Ctrl+C stops)"
+	@echo "  make docker-run            Stack foreground + logs (no rebuild; Ctrl+C stops)"
+	@echo "  make docker-run-detached   Same stack, detached"
+	@echo "  make docker-run-dev        Foreground with compose --build"
 	@echo "  make docker-stop"
 	@echo "  make version-show"
 	@echo ""
@@ -108,10 +109,15 @@ docker-push-release-ghcr-itc:
 docker-push-release: docker-push-release-hub docker-push-release-ghcr-personal docker-push-release-ghcr-itc
 
 docker-run:
+	docker compose -f $(COMPOSE_PROD) up --force-recreate
+
+docker-run-detached:
 	docker compose -f $(COMPOSE_PROD) up -d --force-recreate
 
-docker-run-log:
-	docker compose -f $(COMPOSE_PROD) up --force-recreate
+docker-run-dev:
+	@echo "Starting evaluator (foreground, compose --build). UI: http://localhost:4000"
+	@echo "For background without rebuild: make docker-run-detached"
+	docker compose -f $(COMPOSE_PROD) up --build --force-recreate
 
 docker-stop:
 	docker compose -f $(COMPOSE_PROD) down --remove-orphans
