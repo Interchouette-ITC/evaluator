@@ -5,7 +5,7 @@
   <img *ngIf="isOpenScreenshot" [src]="screenshot" width="300" />
 </div>
 
-<ul *ngIf="results?.length">
+<ul *ngIf="results.length">
   <ng-container *ngFor="let result of results; let i = index">
     <ng-container *ngIf="result">
       <li>
@@ -13,13 +13,13 @@
           <h4>
             <span class="d-flex"
               ><span>{{ i + 1 }}</span
-              >&nbsp;-&nbsp;<a [href]="result?.caller" target="_blank">{{
-                result?.caller
+              >&nbsp;-&nbsp;<a [href]="result.caller" target="_blank">{{
+                result.caller
               }}</a></span
             >
           </h4>
           <span
-            *ngIf="result?.stacktrace?.length"
+            *ngIf="result.stacktrace.length"
             (click)="openStackTrace($event, i)"
             (mousedown)="$event.preventDefault()"
             >{{ isOpenStackTrace(i) ? '-' : '+' }}&nbsp;stacktrace</span
@@ -28,17 +28,17 @@
         <span
           *ngIf="isOpenStackTrace(i)"
           class="pre stacktrace"
-          [innerHtml]="result?.stacktrace_as_string"
+          [innerHtml]="result.stacktrace_as_string"
         ></span>
         <div class="pre overflow-y">
-          <code *ngIf="!isBeautified(i)" [innerHtml]="result?.result"></code>
+          <code *ngIf="!isBeautified(i)" [innerHtml]="result.result"></code>
           <code
             *ngIf="isBeautified(i)"
-            [innerHtml]="result?.result_unpack"
+            [innerHtml]="result.result_unpack"
           ></code>
         </div>
         <div class="d-flex">
-          <h4>ID:&nbsp;{{ result?.sha256 }}</h4>
+          <h4>ID:&nbsp;{{ result.sha256 }}</h4>
           <span
             class="showBeautify"
             (click)="showBeautify($event, i)"
@@ -51,6 +51,6 @@
     </ng-container>
   </ng-container>
 </ul>
-<h3 *ngIf="hasResponse && !results?.length && url" class="no-result">
+<h3 *ngIf="hasResponse && !results.length && url" class="no-result">
   No {{ fnAsString }} run on {{ url }}
 </h3>

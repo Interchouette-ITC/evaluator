@@ -1,6 +1,6 @@
 import { MessageResult } from '@evaluator/shared-types';
 import hljs from 'highlight.js';
-import * as js_beautify from 'js-beautify';
+import { js as js_beautify } from 'js-beautify';
 
 export const highlight = (message: MessageResult) => {
   if (!message) {

@@ -4,8 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { DataAccessFunctionsModule } from '@evaluator/data-accesss-functions';
 import { ResultsService } from '@evaluator/shared-services';
 import { MessageResult } from '@evaluator/shared-types';
-import { InputComponent } from '@evaluator/ui-input';
-
 // import { fadeInOut } from './fadeInOut';
 
 @Component({
@@ -17,7 +15,7 @@ import { InputComponent } from '@evaluator/ui-input';
   //   fadeInOut
   // ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, InputComponent, DataAccessFunctionsModule, FormsModule],
+  imports: [CommonModule, DataAccessFunctionsModule, FormsModule],
 })
 export class ResultsComponent implements AfterViewInit {
   @Input() set hasResponse(hasResponse: boolean) {

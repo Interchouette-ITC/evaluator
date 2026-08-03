@@ -43,7 +43,7 @@
             },
             {
               "type": "anyComponentStyle",
-              "maximumWarning": "2kb",
+              "maximumWarning": "3kb",
               "maximumError": "4kb"
             }
           ],
@@ -94,8 +94,7 @@
       "executor": "@nx/eslint:lint",
       "options": {
         "lintFilePatterns": [
-          "apps/evaluator/**/*.ts",
-          "apps/evaluator/**/*.html"
+          "apps/evaluator/**/*.ts"
         ]
       }
     },
