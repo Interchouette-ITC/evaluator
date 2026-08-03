@@ -31,7 +31,12 @@
           "scripts": true,
           "styles": true,
           "fonts": false
-        }
+        },
+        "allowedCommonJsDependencies": [
+          "js-beautify",
+          "promise-worker",
+          "promise-worker/register"
+        ]
       },
       "configurations": {
         "production": {
