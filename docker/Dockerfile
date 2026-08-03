@@ -19,7 +19,8 @@ RUN apt-get update \
 # Also set executablePath so puppeteer treats skipDownload as default.
 ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    NX_NO_CLOUD=true
 
 COPY package.json package-lock.json ./
 # sqlite3 ships Node-26 prebuilds that need glibc >= 2.38; rebuild on-image so

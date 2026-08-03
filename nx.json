@@ -1,6 +1,7 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "npmScope": "evaluator",
+  "neverConnectToCloud": true,
   "affected": {
     "defaultBase": "dev"
   },

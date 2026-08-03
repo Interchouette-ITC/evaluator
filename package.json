@@ -8,18 +8,18 @@
   },
   "packageManager": "npm@12.0.2",
   "scripts": {
-    "ng": "nx",
+    "ng": "NX_NO_CLOUD=true nx",
     "start": "npm run start:fe & npm run start:api & npm run start:node",
-    "start:dev": "nx run-many --target=serve --projects=evaluator-backend,evaluator",
-    "start:api": "nx serve evaluator-backend",
-    "start:fe": "nx serve evaluator",
-    "start:node": "nx run evaluator:serve-node",
-    "build:angular": "nx run-many --target=build --projects=evaluator,evaluator-backend --parallel=true",
-    "build": "nx build evaluator && nx run evaluator:build-node && nx run evaluator-backend:build",
-    "build:node": "nx run evaluator:build-node",
+    "start:dev": "NX_NO_CLOUD=true nx run-many --target=serve --projects=evaluator-backend,evaluator",
+    "start:api": "NX_NO_CLOUD=true nx serve evaluator-backend",
+    "start:fe": "NX_NO_CLOUD=true nx serve evaluator",
+    "start:node": "NX_NO_CLOUD=true nx run evaluator:serve-node",
+    "build:angular": "NX_NO_CLOUD=true nx run-many --target=build --projects=evaluator,evaluator-backend --parallel=true",
+    "build": "NX_NO_CLOUD=true nx build evaluator && NX_NO_CLOUD=true nx run evaluator:build-node && NX_NO_CLOUD=true nx run evaluator-backend:build",
+    "build:node": "NX_NO_CLOUD=true nx run evaluator:build-node",
     "serve:node": "node dist/evaluator/server/server.js",
     "serve": "node dist/apps/evaluator-backend/main.js & node dist/evaluator/server/server.js",
-    "test": "nx run-many -t test --all"
+    "test": "NX_NO_CLOUD=true nx run-many -t test --all"
   },
   "private": true,
   "puppeteer": {
