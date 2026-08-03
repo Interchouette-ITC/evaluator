@@ -17,8 +17,7 @@ const imports = [
 export class AppComponent {
   private window!: Window;
   private isBrowser: boolean = isPlatformBrowser(this.platformId);
-  mail = 'cm91c3NhY0BmcmVlLmZy';
-  tel = 'KzMzNzYxNTM4NDgy';
+  mail = 'Y29udGFjdEBpbnRlcmNob3VldHRlLm5ldA==';
 
   constructor(
     @Inject(PLATFORM_ID) private readonly platformId: InjectionToken<object>,
