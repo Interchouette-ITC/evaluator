@@ -57,7 +57,7 @@ function createServer() {
           };
         }
         return {
-          content: [{ type: 'text', text: body.slice(0, 100_000) }],
+          content: [{ type: 'text', text: body.slice(0, 300_000) }],
         };
       } catch (err) {
         return {
@@ -94,7 +94,7 @@ function createServer() {
           };
         }
         return {
-          content: [{ type: 'text', text: body.slice(0, 100_000) }],
+          content: [{ type: 'text', text: body.slice(0, 300_000) }],
         };
       } catch (err) {
         return {
