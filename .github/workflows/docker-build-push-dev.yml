@@ -18,21 +18,27 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
 
       - name: Set up Make
         run: sudo apt-get install -y make
-
-      - name: Build Chromium base image
-        run: make docker-build-base
-
-      - name: Build Docker image :dev
-        run: make docker-build-dev
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Chromium base image (local tag)
+        run: make docker-build-base
+
+      - name: Push base to Docker Hub
+        run: make docker-push-base-hub
+        continue-on-error: true
+
+      - name: Build Docker image :dev
+        run: make docker-build-dev
 
       - name: Push :dev to Docker Hub
         run: make docker-push-dev-hub
@@ -43,6 +49,14 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PAT }}
+
+      - name: Push base to personal GHCR
+        run: make docker-push-base-ghcr-personal
+        continue-on-error: true
+
+      - name: Push base to org GHCR
+        run: make docker-push-base-ghcr-itc
+        continue-on-error: true
 
       - name: Push :dev to personal GHCR
         run: make docker-push-dev-ghcr-personal

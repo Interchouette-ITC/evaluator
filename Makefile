@@ -85,7 +85,8 @@ docker-push-base-ghcr-itc:
 	docker push $(BASE_GHCR_ORG):$(BASE_TAG)
 
 docker-build: ensure-base
-	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
+	# Do not --pull: BASE_IMAGE is often local-only until first Hub push.
+	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build \
 		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		-t $(APP_NAME):$(TAG) \
 		-t $(HUB_IMAGE):$(TAG) \
@@ -112,7 +113,7 @@ docker-build-fast: ensure-base
 	@rm -rf .docker-fast-context
 
 docker-build-no-cache: ensure-base
-	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull --no-cache \
+	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --no-cache \
 		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		-t $(APP_NAME):$(TAG) \
 		-t $(HUB_IMAGE):$(TAG) \
@@ -121,7 +122,8 @@ docker-build-no-cache: ensure-base
 		.
 
 docker-build-dev: ensure-base
-	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
+	# Do not --pull: CI builds base in-job; Hub may not have evaluator-base yet.
+	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build \
 		--build-arg BASE_IMAGE=$(BASE_IMAGE) \
 		-t $(APP_NAME):dev \
 		-t $(HUB_IMAGE):dev \
