@@ -4,7 +4,7 @@ const children = [
   spawn(process.execPath, ['dist/apps/evaluator-backend/main.js'], {
     stdio: 'inherit',
   }),
-  spawn(process.execPath, ['dist/evaluator/server/main.js'], {
+  spawn(process.execPath, ['dist/evaluator/server/server.js'], {
     stdio: 'inherit',
   }),
 ];

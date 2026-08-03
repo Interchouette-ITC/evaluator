@@ -40,7 +40,7 @@ export function createApp(): express.Express {
 
   app.use(express.static(distFolder, { maxAge: '1y', index: false }));
 
-  app.get('*', (_req: Request, res: Response) => {
+  app.get('/{*path}', (_req: Request, res: Response) => {
     res.sendFile(join(distFolder, 'index.html'));
   });
 

@@ -10,8 +10,8 @@ services:
     environment:
       - PORT=4000
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-    security_opt:
-      - seccomp=./chrome.json
+    # Do not pin docker/chrome.json: recent runc needs syscalls that profile denied,
+    # and a Chrome-only allowlist also breaks Node startup. Default Docker seccomp is fine.
 
 # make docker-run  (or: docker compose -f docker/docker-compose.yml up)
 # Visit http://localhost:4000/

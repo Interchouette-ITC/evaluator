@@ -17,8 +17,8 @@
     "build:angular": "nx run-many --target=build --projects=evaluator,evaluator-backend --parallel=true",
     "build": "nx build evaluator && nx run evaluator:build-node && nx run evaluator-backend:build",
     "build:node": "nx run evaluator:build-node",
-    "serve:node": "node dist/evaluator/server/main.js",
-    "serve": "node dist/apps/evaluator-backend/main.js & node dist/evaluator/server/main.js",
+    "serve:node": "node dist/evaluator/server/server.js",
+    "serve": "node dist/apps/evaluator-backend/main.js & node dist/evaluator/server/server.js",
     "test": "nx run-many -t test --all"
   },
   "private": true,

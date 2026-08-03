@@ -6,7 +6,7 @@
 # Multi-stage, non-root, minimal COPY, exec-form node entry.
 # Distroless is not used here because Puppeteer needs Chromium at runtime.
 
-ARG NODE_IMAGE=node:26-bookworm-slim
+ARG NODE_IMAGE=node:26-trixie-slim
 
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
@@ -22,7 +22,10 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# sqlite3 ships Node-26 prebuilds that need glibc >= 2.38; rebuild on-image so
+# the .node matches this base even if a stale prebuild is cached.
+RUN npm ci \
+  && npm rebuild sqlite3 --build-from-source
 
 COPY . .
 RUN npm run build \
@@ -37,7 +40,7 @@ RUN apt-get update \
     fonts-ipafont-gothic \
     fonts-wqy-zenhei \
     fonts-thai-tlwg \
-    fonts-kacst \
+    fonts-kacst-one \
     fonts-freefont-ttf \
     libxss1 \
     ca-certificates \
