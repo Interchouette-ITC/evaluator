@@ -47,12 +47,15 @@ RUN apt-get update \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --system --gid 1001 app \
-  && useradd --system --uid 1001 --gid app --create-home --home-dir /home/app app
+  && useradd --system --uid 1001 --gid app --create-home --home-dir /home/app app \
+  && mkdir -p /app/data \
+  && chown -R app:app /app/data
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     PORT=4000 \
-    NODE_ENV=production
+    NODE_ENV=production \
+    SQLITE_PATH=/app/data/database.db
 
 COPY --from=builder --chown=app:app /app/package.json /app/package-lock.json ./
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules

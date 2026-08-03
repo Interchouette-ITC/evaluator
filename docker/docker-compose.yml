@@ -10,8 +10,14 @@ services:
     environment:
       - PORT=4000
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - SQLITE_PATH=/app/data/database.db
+    volumes:
+      - evaluator-data:/app/data
     # Do not pin docker/chrome.json: recent runc needs syscalls that profile denied,
     # and a Chrome-only allowlist also breaks Node startup. Default Docker seccomp is fine.
+
+volumes:
+  evaluator-data:
 
 # make docker-run (foreground) / docker-run-detached / docker-run-dev
 # Visit http://localhost:4000/
