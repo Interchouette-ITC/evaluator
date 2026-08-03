@@ -1,18 +1,14 @@
 # syntax=docker/dockerfile:1
 
+# Single image: Node build + runtime with distro Chromium.
 # Build from repo root: docker build -f docker/Dockerfile .
-# Or: make docker-build
-#
-# Runtime FROM evaluator-base (Chromium). Builder stays plain Node (no Chromium).
-# Prefers BuildKit cache mounts for npm. DOCKER_BUILDKIT=1 (Makefile default).
+# Or: make docker-build / make docker-build-dev
 
 ARG NODE_IMAGE=node:26-trixie-slim
-ARG BASE_IMAGE=interchouette/evaluator-base:node26-trixie
 
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
 
-# Skip Puppeteer browser fetch in the builder; runtime uses distro Chromium.
 ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
@@ -20,7 +16,6 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
 
 COPY package.json package-lock.json ./
 # sqlite3 N-API prebuilds work on trixie (glibc 2.41); no rebuild / g++ needed.
-# Reintroduce npm rebuild --build-from-source only if require('sqlite3') fails.
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
@@ -29,10 +24,25 @@ RUN --mount=type=cache,target=/root/.npm \
     npm run build \
   && npm prune --omit=dev
 
-FROM ${BASE_IMAGE} AS runtime
+FROM ${NODE_IMAGE} AS runtime
 WORKDIR /app
 
-RUN mkdir -p /app/data \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst-one \
+    fonts-freefont-ttf \
+    libxss1 \
+    ca-certificates \
+  && groupadd --system --gid 1001 app \
+  && useradd --system --uid 1001 --gid app --create-home --home-dir /home/app app \
+  && mkdir -p /app/data \
   && chown -R app:app /app/data
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \

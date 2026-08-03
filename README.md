@@ -14,7 +14,7 @@ Render will be redeployed from the Interchouette Docker image in a later pass.
 Browser (Angular SPA)
     → Express gateway :4000  (static, WS evaluate, GET /evaluate, Puppeteer)
         → Nest API :3333     (/api/functions)
-        → Chromium           (distro binary in evaluator-base)
+        → Chromium           (in the same web image)
 
 Rust CLI / MCP (evaluator-tools image, no Chromium)
     → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
@@ -22,9 +22,8 @@ Rust CLI / MCP (evaluator-tools image, no Chromium)
 
 | Image | Role |
 | --- | --- |
-| `interchouette/evaluator-base:node26-trixie` | Node 26 + apt Chromium/fonts (rebuild rarely) |
-| `interchouette/evaluator` | Web stack runtime `FROM` the base |
-| `interchouette/evaluator-tools` | Rust CLI + thin MCP (stdio / HTTP `:8788`) |
+| `interchouette/evaluator` | Single web image (Node + Chromium + app) |
+| `interchouette/evaluator-tools` | Optional Rust CLI + thin MCP (stdio / HTTP `:8788`) |
 
 Compose profiles: `web` | `tools` | both.
 
@@ -59,68 +58,45 @@ Production / Docker Node gateway listens on port **4000**. A screenshot of the w
 
 Images (primary):
 
-- Docker Hub: `interchouette/evaluator` (+ `evaluator-base`, `evaluator-tools`)
+- Docker Hub: `interchouette/evaluator` (+ optional `evaluator-tools`)
 - GHCR: `ghcr.io/interchouette-itc/evaluator`
 - Personal GHCR (optional): `ghcr.io/groussac/evaluator`
 
-The former Hub mirror `gregoshop/evaluator` is **deprecated**.
+The former Hub mirror `gregoshop/evaluator` is **deprecated**. One web image only (Chromium included). No separate `evaluator-base`.
 
-### Faster builds
-
-1. **`evaluator-base`** — Chromium + fonts once (`make docker-build-base`). App image does not re-apt Chromium.
-2. **BuildKit** — `DOCKER_BUILDKIT=1` (Makefile default); npm cache mount on `npm ci` / build; apt cache on the base Dockerfile.
-3. **sqlite3** — N-API prebuilds work on `node:26-trixie-slim` (glibc 2.41). No `npm rebuild` / g++ in the builder. Reintroduce rebuild only if `require('sqlite3')` fails in the image.
-
-Build and run from the repo root:
+### Run CI-built `:dev` (preferred locally)
 
 ```shell
-# Fast (preferred): build on the host, package in Docker
-npm run build
-make docker-build-fast
+make docker-pull-dev
 make docker-run
-
-# Slow full in-Docker build (CI / clean repro only)
-make docker-build-base   # first time / when Dockerfile.base changes
-make docker-build
-make docker-run
-```
-
-Or:
-
-```shell
-docker build -f docker/Dockerfile.base -t interchouette/evaluator-base:node26-trixie .
-docker build -f docker/Dockerfile --build-arg BASE_IMAGE=interchouette/evaluator-base:node26-trixie -t interchouette/evaluator:latest .
-docker compose -f docker/docker-compose.yml --profile web up
 ```
 
 Visit http://localhost:4000/
+
+### Build (CI / repro)
+
+```shell
+make docker-build-dev   # or make docker-build
+```
+
+Optional local packaging after `npm run build`: `make docker-build-fast`.
 
 CLI / MCP (web must be reachable via `EVALUATOR_URL`):
 
 ```shell
 make docker-build-tools
 make docker-run-cli ARGS='-p /data/test.csv -n 1 -f window.eval'
-# CSV dir is mounted at /data. Host-only web:
-# EVALUATOR_URL=http://host.docker.internal:4000 make docker-run-cli ARGS='-p /data/test.csv -n 1'
-make docker-run-mcp          # stdio
-make docker-run-mcp-http     # http://localhost:8788/mcp
-```
-
-Push `:dev` (after Hub/GHCR login):
-
-```shell
-make docker-build-dev
-make docker-push-dev
+make docker-run-mcp
+make docker-run-mcp-http
 ```
 
 ### CI / CD
 
 | Workflow | Trigger | What |
 | --- | --- | --- |
-| `ci.yml` | PR / push to `dev` | install dependencies and run `npm run build` |
-| `docker-build-push-base.yml` | manual / Dockerfile.base change | build and push Chromium base |
-| `docker-build-push-dev.yml` | manual | build base + push `:dev` app image |
-| `release.yml` | GitHub Release `vX.Y.Z` | publish `:X.Y.Z` and `:latest` (tag must match `package.json` version) |
+| `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
+| `docker-build-push-dev.yml` | manual | monolith `:dev` → Hub + GHCR |
+| `release.yml` | GitHub Release `vX.Y.Z` | `:X.Y.Z` + `:latest` |
 
 To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.
 
@@ -130,7 +106,7 @@ To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create th
 
 - Node.js `>=22` on the host (you already have a current Node; agents must not install another)
 - npm `>=11`
-- Docker web image: builder `node:26-trixie-slim`, runtime `FROM` `evaluator-base` (Chromium)
+- Docker web image: single `node:26-trixie-slim` multi-stage build with distro Chromium
 
 ```shell
 npm install

@@ -30,14 +30,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build Chromium base image (local tag)
-        run: make docker-build-base
-
-      - name: Push base to Docker Hub
-        run: make docker-push-base-hub
-        continue-on-error: true
-
-      - name: Build Docker image :dev
+      - name: Build Docker image :dev (monolith)
         run: make docker-build-dev
 
       - name: Push :dev to Docker Hub
@@ -49,14 +42,6 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.GHCR_USERNAME }}
           password: ${{ secrets.GHCR_PAT }}
-
-      - name: Push base to personal GHCR
-        run: make docker-push-base-ghcr-personal
-        continue-on-error: true
-
-      - name: Push base to org GHCR
-        run: make docker-push-base-ghcr-itc
-        continue-on-error: true
 
       - name: Push :dev to personal GHCR
         run: make docker-push-dev-ghcr-personal

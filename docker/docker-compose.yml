@@ -2,12 +2,8 @@ services:
   evaluator:
     profiles: ["web"]
     container_name: evaluator
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        BASE_IMAGE: ${BASE_IMAGE:-interchouette/evaluator-base:node26-trixie}
-    image: interchouette/evaluator:latest
+    # Prefer CI-built images: make docker-pull-dev && make docker-run
+    image: interchouette/evaluator:dev
     ports:
       - "4000:4000"
     environment:
@@ -30,7 +26,6 @@ services:
       - EVALUATOR_URL=${EVALUATOR_URL:-http://evaluator:4000}
     volumes:
       - ../evaluator:/data:ro
-    # one-shot / interactive via make docker-run-cli / docker-run-mcp
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -45,18 +40,11 @@ services:
     command: ["node", "/app/mcp/server.mjs", "--http"]
     ports:
       - "8788:8788"
-    # When web profile is also up, resolve `evaluator` via default network.
-    # For host-only web: EVALUATOR_URL=http://host.docker.internal:4000
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 volumes:
   evaluator-data:
 
-# Profiles: web | tools | web,tools
-# make docker-run / docker-run-detached / docker-run-dev  → web
-# make docker-build-tools && make docker-run-mcp / docker-run-mcp-http / docker-run-cli
+# make docker-pull-dev && make docker-run
 # Visit http://localhost:4000/
-#
-# Legacy Hub mirror gregoshop/evaluator is deprecated; use interchouette/evaluator
-# or ghcr.io/interchouette-itc/evaluator.
