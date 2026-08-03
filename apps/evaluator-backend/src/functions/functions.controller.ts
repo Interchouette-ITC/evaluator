@@ -1,10 +1,12 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { FunctionsService } from './functions.service';
 
 @Controller('functions')
 export class FunctionsController {
 
-  constructor(private readonly functionsService: FunctionsService) { }
+  constructor(
+    @Inject(FunctionsService) private readonly functionsService: FunctionsService
+  ) { }
 
   @Get()
   findAll() {

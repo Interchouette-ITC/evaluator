@@ -21,6 +21,8 @@ const auth = basicAuth({
 const apiProxy = proxy({
   target: 'http://127.0.0.1:3333',
   changeOrigin: true,
+  // Mounted at `/api`, HPM forwards a stripped path (`/functions`). Nest serves `/api/functions`.
+  pathRewrite: (path) => `/api${path}`,
 });
 
 export function createApp(): express.Express {
