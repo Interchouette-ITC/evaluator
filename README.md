@@ -213,11 +213,11 @@ make docker-run-mcp          # stdio (evaluator-mcp)
 | --- | --- | --- |
 | `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
 | `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR; then Render via `RENDER_DEPLOY_HOOK` |
-| `release.yml` | GitHub Release `vX.Y.Z` | `:X.Y.Z` + `:latest`; then Render via `RENDER_DEPLOY_HOOK` |
+| `release.yml` | GitHub Release `vX.Y.Z` | attach host `evaluator` + `evaluator-mcp` binaries; push monolith `:X.Y.Z` + `:latest` → Hub + GHCR; Render redeploy |
 
 Secret `RENDER_DEPLOY_HOOK` = full Render Deploy Hook URL (repo secret, not an app env). Without it, Hub still updates; Render stays on the old digests until a manual redeploy.
 
-To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.
+To publish a release: bump **both** `package.json` and `evaluator/Cargo.toml` to the same `X.Y.Z`, tag `vX.Y.Z`, create the GitHub Release. Workflow validates the tag against both versions.
 
 </details>
 
