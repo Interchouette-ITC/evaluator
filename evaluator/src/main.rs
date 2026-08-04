@@ -1,3 +1,5 @@
+mod filter;
+
 use async_process::{Child, Command, Stdio};
 use async_std::fs::File;
 use async_std::io::prelude::BufReadExt;
@@ -5,6 +7,7 @@ use async_std::io::BufReader;
 use async_std::stream::StreamExt as AsyncStreamExt;
 use clap::{CommandFactory, Parser, Subcommand};
 use csv_async::AsyncReaderBuilder;
+use filter::{extract_gateway_payloads, HitFilter};
 use futures::stream::{self, StreamExt as FuturesStreamExt};
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
@@ -67,9 +70,15 @@ struct EvaluateArgs {
     /// Function expression (e.g. window.eval, JSON.stringify)
     #[arg(long = "fn", short = 'f', default_value_t = String::from(""))]
     function: String,
-    /// Only print the body when it contains this substring
+    /// Comma-separated keywords; keep payloads matching any (case-sensitive)
     #[arg(long = "search", short = 's', default_value_t = String::from(""))]
     search_pattern: String,
+    /// Keep payloads matching this Rust regex
+    #[arg(long = "regex", default_value_t = String::from(""))]
+    regex: String,
+    /// Path to frontend.txt-style malware rules
+    #[arg(long = "rules", default_value_t = String::from(""))]
+    rules: String,
 }
 
 #[derive(Parser, Debug)]
@@ -77,7 +86,7 @@ struct BatchArgs {
     /// Path to the CSV file (`Domain` column, or first column)
     #[arg(short = 'p', long = "path")]
     path: String,
-    /// Function to evaluate
+    /// Function to hook (e.g. window.eval, JSON.stringify)
     #[arg(short = 'f', long = "function", default_value_t = String::from(""))]
     function: String,
     /// Max concurrent site evaluations (how many pages at once)
@@ -86,9 +95,32 @@ struct BatchArgs {
     /// Navigation timeout (legacy script only; 0 → script default)
     #[arg(short = 't', long = "timeout", default_value_t = 0)]
     timeout: u32,
-    /// Pattern to search (legacy filters console hits; HTTP mode filters body)
+    /// Comma-separated keywords; keep payloads matching any (case-sensitive)
     #[arg(short = 's', long = "search_pattern", default_value_t = String::from(""))]
     search_pattern: String,
+    /// Keep payloads matching this Rust regex
+    #[arg(long = "regex", default_value_t = String::from(""))]
+    regex: String,
+    /// Path to frontend.txt-style malware rules
+    #[arg(long = "rules", default_value_t = String::from(""))]
+    rules: String,
+}
+
+fn hit_filter_from(search: &str, regex: &str, rules: &str) -> HitFilter {
+    let regex = if regex.trim().is_empty() {
+        None
+    } else {
+        Some(regex.trim())
+    };
+    let rules = if rules.trim().is_empty() {
+        None
+    } else {
+        Some(rules.trim())
+    };
+    HitFilter::try_new(search, regex, rules).unwrap_or_else(|e| {
+        eprintln!("filter error: {e}");
+        std::process::exit(2);
+    })
 }
 
 #[derive(Debug)]
@@ -96,14 +128,17 @@ struct BatchRunner {
     gateway: String,
     legacy: bool,
     args: BatchArgs,
+    filter: HitFilter,
 }
 
 impl BatchRunner {
     fn new(gateway: String, legacy: bool, args: BatchArgs) -> Self {
+        let filter = hit_filter_from(&args.search_pattern, &args.regex, &args.rules);
         Self {
             gateway,
             legacy,
             args,
+            filter,
         }
     }
 
@@ -140,15 +175,15 @@ impl BatchRunner {
         let concurrency = self.args.nb_threads.max(1) as usize;
         let gateway = self.gateway.trim_end_matches('/').to_string();
         let function = self.args.function.clone();
-        let search = self.args.search_pattern.clone();
+        let filter = self.filter.clone();
 
         let jobs = stream::iter(sites.into_iter().map(|site| {
             let gateway = gateway.clone();
             let function = function.clone();
-            let search = search.clone();
+            let filter = filter.clone();
             async move {
                 async_std::task::spawn_blocking(move || {
-                    evaluate_http(&gateway, &site, &function, &search)
+                    evaluate_http(&gateway, &site, &function, &filter)
                 })
                 .await
             }
@@ -199,7 +234,6 @@ impl BatchRunner {
             .arg(&site)
             .arg(&self.args.function)
             .arg(self.args.timeout.to_string())
-            .arg(&self.args.search_pattern)
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .spawn()
@@ -219,18 +253,29 @@ impl BatchRunner {
                 }
             }
             let _ = child.status().await;
-            print_site_results(&site, &results);
+            print_site_results(&site, &results, &self.filter);
         }
     }
 }
 
-fn print_site_results(site: &str, results: &[String]) {
+fn print_site_results(site: &str, results: &[String], filter: &HitFilter) {
     println!("site: {}", site);
-    if results.is_empty() {
+    let kept: Vec<(Vec<String>, &String)> = results
+        .iter()
+        .filter_map(|line| filter.match_labels(line).map(|labels| (labels, line)))
+        .collect();
+    if kept.is_empty() {
         println!("results: none");
+    } else if filter.is_active() {
+        for (labels, line) in kept {
+            for label in labels {
+                println!("match: {}", label);
+            }
+            println!("  {}", line);
+        }
     } else {
         println!("results:");
-        for line in results {
+        for (_, line) in kept {
             println!("  {}", line);
         }
     }
@@ -260,7 +305,7 @@ fn normalize_site(raw: &str) -> Option<String> {
     }
 }
 
-fn evaluate_http(gateway: &str, site: &str, function: &str, search: &str) {
+fn evaluate_http(gateway: &str, site: &str, function: &str, filter: &HitFilter) {
     let mut url = format!("{}/evaluate?url={}", gateway, encode(site));
     if !function.is_empty() {
         url.push_str("&function=");
@@ -270,12 +315,19 @@ fn evaluate_http(gateway: &str, site: &str, function: &str, search: &str) {
     match ureq::get(&url).call() {
         Ok(resp) => match resp.into_string() {
             Ok(body) => {
-                if !search.is_empty() && !body.contains(search) {
-                    eprintln!("site: {} (no search_pattern match)", site);
-                    return;
+                if filter.is_active() {
+                    let payloads = extract_gateway_payloads(&body);
+                    if payloads.is_empty() {
+                        // Fall back to whole-body match labels for crude keyword hits.
+                        print_site_results(site, &[body], filter);
+                    } else {
+                        print_site_results(site, &payloads, filter);
+                    }
+                } else {
+                    println!("site: {}", site);
+                    println!("{}", body);
+                    println!();
                 }
-                println!("site: {}", site);
-                println!("{}", body);
             }
             Err(e) => eprintln!("site: {} read error: {:?}", site, e),
         },
@@ -287,14 +339,13 @@ fn legacy_script_path() -> String {
     format!("{}/legacy/evaluate.js", env!("CARGO_MANIFEST_DIR"))
 }
 
-async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, search: &str) {
+async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, filter: &HitFilter) {
     let script = legacy_script_path();
     let mut child = Command::new("node")
         .arg(&script)
         .arg(site)
         .arg(function)
         .arg(timeout.to_string())
-        .arg(search)
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
         .spawn()
@@ -310,7 +361,7 @@ async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, search: &
         }
     }
     let _ = child.status().await;
-    print_site_results(site, &results);
+    print_site_results(site, &results, filter);
 }
 
 /// Insert `batch` when legacy flat `-p`/`--path` is used without a subcommand.
@@ -343,14 +394,14 @@ async fn run_command(gateway: &str, legacy: bool, command: Commands) {
     match command {
         Commands::Evaluate(args) => {
             let site = normalize_site(&args.url).unwrap_or_else(|| args.url.clone());
+            let filter = hit_filter_from(&args.search_pattern, &args.regex, &args.rules);
             if legacy {
-                evaluate_legacy_one(&site, &args.function, 0, &args.search_pattern).await;
+                evaluate_legacy_one(&site, &args.function, 0, &filter).await;
             } else {
                 let gateway = gateway.trim_end_matches('/').to_string();
                 async_std::task::spawn_blocking({
                     let function = args.function.clone();
-                    let search = args.search_pattern.clone();
-                    move || evaluate_http(&gateway, &site, &function, &search)
+                    move || evaluate_http(&gateway, &site, &function, &filter)
                 })
                 .await;
             }
@@ -392,12 +443,14 @@ Session switches (interactive only):
   gateway | legacy off      switch this shell to gateway
 
 Commands:
-  evaluate --url URL [--fn F] [--search S]
+  evaluate --url URL [--fn F] [-s KWS] [--regex RE] [--rules PATH]
       One URL. Uses session/global --legacy when set.
+      -f chooses any JS function to hook (not eval-only).
 
-  batch -p CSV [-f F] [-n N] [-s S] [-t MS]
+  batch -p CSV [-f F] [-n N] [-s KWS] [--regex RE] [--rules PATH] [-t MS]
       CSV with Domain column (or first column).
       -n / --nb_threads = max concurrent pages (default 1).
+      -s = comma-separated keywords (OR); --regex / --rules filter payloads.
       Use session legacy, or pass --legacy (global) on the line / argv.
       -t/--timeout only applies with legacy.
 
@@ -407,7 +460,8 @@ Commands:
 Examples:
   evaluate --url https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval --fn window.eval
   batch -p archive/test.csv -f window.eval -n 1
-  --legacy batch -p archive/test.csv -f window.eval -n 1
+  batch -p archive/test.csv -f window.eval -n 2 --legacy --rules rules/frontend.txt
+  --legacy batch -p archive/test.csv -f window.eval -n 1 -s checkout,grelos_v
 
 Tips:
   • Global --gateway / EVALUATOR_URL overrides the default URL.

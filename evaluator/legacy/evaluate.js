@@ -5,7 +5,10 @@
  * Production path: Nest gateway + libs/util/puppeteer (Playwright by default).
  *
  * Usage:
- *   node evaluate.js <url> [function] [timeout_ms] [search_pattern]
+ *   node evaluate.js <url> [function] [timeout_ms]
+ *
+ * Always emits hooked-function argument payloads on stdout.
+ * Keyword / regex / rules filtering is done by the Rust CLI.
  */
 const puppeteer = require('puppeteer');
 const { START, template } = require('./eval.template.js');
@@ -31,11 +34,8 @@ function buildTemplate(fn) {
   return template.replace(/window\.eval/gm, fn);
 }
 
-function printConsoleHit(text, searchPattern) {
+function printConsoleHit(text) {
   if (!text.includes(START)) {
-    return;
-  }
-  if (searchPattern && !text.includes(searchPattern)) {
     return;
   }
   const raw = text.replace(START, '');
@@ -64,7 +64,6 @@ async function main() {
   ).trim();
   const fn = args[1] || 'window.eval';
   const timeout = Number(args[2]) || DEFAULT_TIMEOUT_MS;
-  const searchPattern = args[3] || '';
   const hostname = getHostname(url);
 
   const launchOpts = {
@@ -98,7 +97,7 @@ async function main() {
     });
 
     page.on('console', (msg) => {
-      printConsoleHit(msg.text(), searchPattern);
+      printConsoleHit(msg.text());
     });
 
     await page.goto(url, { timeout, waitUntil: 'domcontentloaded' }).catch((err) => {

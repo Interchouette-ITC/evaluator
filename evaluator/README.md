@@ -6,6 +6,8 @@ Host binary under this directory. Build with `make build` / `make install` from 
 
 **`--legacy`** = local teaching Puppeteer under [`legacy/`](./legacy/README.md) — no gateway. Works as a **global** flag (interactive shell + `evaluate` + `batch`) or on `batch` alone.
 
+Hook any JS function with `-f` / `--function` (e.g. `window.eval`, `JSON.stringify`). The inject wraps that callable and logs its arguments; filtering applies to those payloads.
+
 ## Modes
 
 | Invocation | Behavior |
@@ -47,7 +49,35 @@ evaluator -p archive/test.csv -f window.eval -n 1
 evaluator batch -p archive/test.csv -f window.eval -n 1 --legacy
 ```
 
-Batch flags: `-p`/`--path`, `-f`/`--function`, `-n`/`--nb_threads`, `-s`/`--search_pattern`, `-t`/`--timeout` (legacy only), `--legacy`.
+### Payload filters
+
+Keep only hooked-function payloads that match keywords, a regex, or malware rules (OR across sources). Empty filters print all hits.
+
+Malware rule files use **Willem de Groot**’s [magento-malware-scanner](https://github.com/gwillem/magento-malware-scanner) format. See [`rules/README.md`](./rules/README.md) for citation and parser notes.
+
+| Flag | Meaning |
+| --- | --- |
+| `-s` / `--search` / `--search_pattern` | Comma-separated keywords (any substring match) |
+| `--regex` | Rust regex against each payload |
+| `--rules PATH` | Willem’s rule-file format ([frontend.txt](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt); [backend.txt](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/backend.txt) is PHP/server-side and not used for hook payloads) |
+
+Vendored frontend snapshot (cited in-file): [`rules/frontend.txt`](./rules/frontend.txt).
+
+```shell
+evaluator batch -p archive/All-Live-Magento-Sites.csv \
+  -f window.eval -n 2 -t 10000 --legacy \
+  --rules rules/frontend.txt
+
+evaluator batch -p archive/All-Live-Magento-Sites.csv \
+  -f window.eval -n 2 --legacy -s checkout,onepage,cart,grelos_v
+
+evaluator --legacy evaluate --url https://example.com --fn window.eval \
+  --regex 'grelos_v|gate\.php'
+```
+
+Matching lines print as `match: <rule-or-keyword>` then the payload.
+
+Batch flags: `-p`/`--path`, `-f`/`--function`, `-n`/`--nb_threads`, `-s`/`--search_pattern`, `--regex`, `--rules`, `-t`/`--timeout` (legacy only), `--legacy`.
 
 ## Notes
 
