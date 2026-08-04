@@ -217,9 +217,9 @@ Takeaways:
 2. Prefer **MCP HTTP** over stdio when available — same evaluate work, no spawn tax. Local `:8788` or proxied `https://mcp:mcp@host/mcp`.
 3. Hit counts and screenshots were comparable across engines (~75–84 console hits).
 
-# License
+## License
 
-GNU General Public License v3.0 or later (see `LICENSE` / GitHub).
+[GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html) — see [`LICENSE`](LICENSE).
 
 ### Security
 
