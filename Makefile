@@ -37,7 +37,7 @@ help:
 	@echo "  make docker-pull-dev       Pull Hub :dev (preferred local test)"
 	@echo "  make docker-run            Web :4000 + MCP HTTP :8788 (ENABLE_MCP=1)"
 	@echo "  make docker-run-detached   Same, detached"
-	@echo "  make docker-build-dev      All-in-one build + :dev tags (CI)"
+	@echo "  make docker-build-dev      All-in-one build + :dev + :latest tags (CI)"
 	@echo "  make docker-build          All-in-one :$(TAG) + :$(APP_VERSION)"
 	@echo "  make docker-build-fast     Optional: host npm run build + package (web-only)"
 	@echo "  make docker-run-cli        ARGS='-p /data/test.csv -n 1' (needs gateway up)"
@@ -87,9 +87,13 @@ docker-build-no-cache:
 docker-build-dev:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
 		-t $(APP_NAME):dev \
+		-t $(APP_NAME):latest \
 		-t $(HUB_IMAGE):dev \
+		-t $(HUB_IMAGE):latest \
 		-t $(GHCR_PERSONAL_IMAGE):dev \
+		-t $(GHCR_PERSONAL_IMAGE):latest \
 		-t $(GHCR_ORG_IMAGE):dev \
+		-t $(GHCR_ORG_IMAGE):latest \
 		-f $(DOCKERFILE) \
 		.
 
@@ -106,29 +110,39 @@ docker-build-tools:
 docker-build-tools-dev:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
 		-t $(APP_NAME)-tools:dev \
+		-t $(APP_NAME)-tools:latest \
 		-t $(TOOLS_HUB_IMAGE):dev \
+		-t $(TOOLS_HUB_IMAGE):latest \
 		-t $(TOOLS_GHCR_PERSONAL):dev \
+		-t $(TOOLS_GHCR_PERSONAL):latest \
 		-t $(TOOLS_GHCR_ORG):dev \
+		-t $(TOOLS_GHCR_ORG):latest \
 		-f $(DOCKERFILE_TOOLS) \
 		.
 
 docker-push-tools-dev-hub:
 	docker push $(TOOLS_HUB_IMAGE):dev
+	docker push $(TOOLS_HUB_IMAGE):latest
 
 docker-push-tools-dev-ghcr-personal:
 	docker push $(TOOLS_GHCR_PERSONAL):dev
+	docker push $(TOOLS_GHCR_PERSONAL):latest
 
 docker-push-tools-dev-ghcr-itc:
 	docker push $(TOOLS_GHCR_ORG):dev
+	docker push $(TOOLS_GHCR_ORG):latest
 
 docker-push-dev-hub:
 	docker push $(HUB_IMAGE):dev
+	docker push $(HUB_IMAGE):latest
 
 docker-push-dev-ghcr-personal:
 	docker push $(GHCR_PERSONAL_IMAGE):dev
+	docker push $(GHCR_PERSONAL_IMAGE):latest
 
 docker-push-dev-ghcr-itc:
 	docker push $(GHCR_ORG_IMAGE):dev
+	docker push $(GHCR_ORG_IMAGE):latest
 
 docker-push-dev:
 	@if [ "$(CI)" = "1" ]; then \

@@ -94,7 +94,7 @@ make docker-run-mcp          # stdio
 | Workflow | Trigger | What |
 | --- | --- | --- |
 | `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
-| `docker-build-push-dev.yml` | manual | monolith `:dev` → Hub + GHCR |
+| `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR |
 | `release.yml` | GitHub Release `vX.Y.Z` | `:X.Y.Z` + `:latest` |
 
 To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.

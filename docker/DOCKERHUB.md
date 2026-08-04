@@ -61,7 +61,8 @@ AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` o
 | Tag | Meaning |
 | --- | --- |
 | `dev` | Latest CI build |
-| `latest` / `X.Y.Z` | Release |
+| `latest` | Same image as current `:dev` (also updated on release) |
+| `X.Y.Z` | Versioned release |
 
 ## Also on GHCR
 
