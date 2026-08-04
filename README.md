@@ -4,9 +4,9 @@ This project aims to ease evaluating the parameters of javascript functions on a
 
 Typically helps with deobfuscating https://stackoverflow.com/questions/32977908/how-can-i-deobfuscate-this-javascript using `String.fromCharCode` or `window.eval` or other functions like `JSON.stringify`
 
-## Deployed on [Render](https://render.com/) at [evaluator.onlyeum.io](https://evaluator.onlyeum.io/) (beta)
+## Live
 
-Render will be redeployed from the Interchouette Docker image in a later pass.
+Production: [https://evaluator.interchouette.net](https://evaluator.interchouette.net)
 
 ## Architecture
 
@@ -50,6 +50,12 @@ Example (dev FE on port 4200)
 
 ```
 http://localhost:4200/evaluate/?url=https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval&function=window.eval
+```
+
+Example (production)
+
+```
+https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval&function=window.eval
 ```
 
 Production / Docker Node gateway listens on port **4000**. A screenshot of the website is included in the response stream.

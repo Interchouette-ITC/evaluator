@@ -2,6 +2,8 @@
 
 Evaluate JavaScript on live pages with **Playwright** (default) or **Puppeteer** (`USE_PUPPETEER=1`), on distro Chromium.
 
+**Live:** [https://evaluator.interchouette.net](https://evaluator.interchouette.net)
+
 **One image:** web UI + Nest API + Rust CLI + MCP (stdio / Streamable HTTP).
 
 ```bash
@@ -13,10 +15,10 @@ Default: **web on :4000** + **MCP HTTP on :8788**. Opt out with `ENABLE_MCP=0`.
 
 Prefer **MCP HTTP** (`http://localhost:8788/mcp`) over stdio spawn: same evaluate path, no per-call Docker cold start.
 
-Open http://localhost:4000/
+Open http://localhost:4000/ (or production [evaluator.interchouette.net](https://evaluator.interchouette.net))
 
 ```
-http://localhost:4000/evaluate/?url=https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval&function=window.eval
+https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval&function=window.eval
 ```
 
 ## Modes
