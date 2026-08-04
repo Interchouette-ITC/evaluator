@@ -1,4 +1,4 @@
-use async_process::{Child, ChildStdout, Command, Stdio};
+use async_process::{Child, Command, Stdio};
 use async_std::fs::File;
 use async_std::io::prelude::BufReadExt;
 use async_std::io::BufReader;
@@ -156,9 +156,6 @@ impl BatchRunner {
     }
 
     async fn run_legacy(&mut self) {
-        eprintln!(
-            "legacy mode: local Node script (see evaluator/legacy/README.md); HTTP gateway is the default path"
-        );
         let file = File::open(&self.args.path).await.unwrap();
         let mut reader = AsyncReaderBuilder::new()
             .delimiter(b',')
@@ -195,33 +192,44 @@ impl BatchRunner {
 
     async fn send_command(&mut self, site: String) -> Child {
         let script = legacy_script_path();
-        eprintln!("legacy: {} → {}", &site, script);
         Command::new("node")
             .arg(&script)
-            .arg(site)
+            .arg(&site)
             .arg(&self.args.function)
             .arg(self.args.timeout.to_string())
             .arg(&self.args.search_pattern)
             .stdout(Stdio::piped())
+            .stderr(Stdio::null())
             .spawn()
             .expect("spawn node legacy/evaluate.js (need repo-root npm install + Chromium)")
     }
 
     async fn print_results(&mut self, mut children: HashMap<String, Child>) {
-        for (site, child) in children.iter_mut() {
-            if let Some::<&mut ChildStdout>(stdoutin) = child.stdout.as_mut() {
+        for (site, mut child) in children.drain() {
+            let mut results = Vec::new();
+            if let Some(stdoutin) = child.stdout.as_mut() {
                 let mut lines = BufReader::new(stdoutin).lines();
-                if let Some(line) = AsyncStreamExt::next(&mut lines).await {
-                    let line = line.unwrap();
-                    if !line.is_empty() {
-                        println!("site: {}", site);
-                        println!("{:?}", &line);
-                    }
-                };
                 while let Some(line) = AsyncStreamExt::next(&mut lines).await {
-                    println!("{:?}", line.unwrap());
+                    let line = line.unwrap_or_default();
+                    if !line.is_empty() {
+                        results.push(line);
+                    }
                 }
-            };
+            }
+            let _ = child.status().await;
+            print_site_results(&site, &results);
+        }
+    }
+}
+
+fn print_site_results(site: &str, results: &[String]) {
+    println!("site: {}", site);
+    if results.is_empty() {
+        println!("results: none");
+    } else {
+        println!("results:");
+        for line in results {
+            println!("  {}", line);
         }
     }
 }
@@ -278,7 +286,6 @@ fn legacy_script_path() -> String {
 
 async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, search: &str) {
     let script = legacy_script_path();
-    eprintln!("legacy: {} → {}", site, script);
     let mut child = Command::new("node")
         .arg(&script)
         .arg(site)
@@ -286,25 +293,21 @@ async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, search: &
         .arg(timeout.to_string())
         .arg(search)
         .stdout(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .expect("spawn node legacy/evaluate.js (need repo-root npm install + Chromium)");
+    let mut results = Vec::new();
     if let Some(stdoutin) = child.stdout.as_mut() {
         let mut lines = BufReader::new(stdoutin).lines();
-        let mut first = true;
         while let Some(line) = AsyncStreamExt::next(&mut lines).await {
-            let line = line.expect("legacy stdout");
-            if first {
-                first = false;
-                if !line.is_empty() {
-                    println!("site: {}", site);
-                    println!("{:?}", &line);
-                }
-            } else {
-                println!("{:?}", line);
+            let line = line.unwrap_or_default();
+            if !line.is_empty() {
+                results.push(line);
             }
         }
     }
     let _ = child.status().await;
+    print_site_results(site, &results);
 }
 
 /// Insert `batch` when legacy flat `-p`/`--path` is used without a subcommand.
@@ -350,10 +353,6 @@ async fn run_command(gateway: &str, legacy: bool, command: Commands) {
             }
         }
         Commands::Batch(args) => {
-            eprintln!(
-                "CSV={} gateway={} legacy={}",
-                args.path, gateway, legacy
-            );
             let path = args.path.clone();
             BatchRunner::new(gateway.to_string(), legacy, args)
                 .run()
