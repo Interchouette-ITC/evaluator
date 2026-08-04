@@ -26,7 +26,7 @@ node evaluator/legacy/evaluate.js
 
 ```bash
 cd evaluator
-cargo run -- batch -p test.csv -f window.eval -n 1 --legacy
+cargo run -- batch -p archive/test.csv -f window.eval -n 1 --legacy
 ```
 
 HTTP batch (default, no `--legacy`) still talks to `EVALUATOR_URL` / `--gateway`.

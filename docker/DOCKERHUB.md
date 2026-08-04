@@ -58,7 +58,7 @@ docker run --rm --network host \
 docker run --rm --network host \
   -e EVALUATOR_URL=http://127.0.0.1:4000 \
   -v "$PWD/evaluator:/data:ro" \
-  "$IMAGE" evaluator batch -p /data/test.csv -f window.eval -n 1
+  "$IMAGE" evaluator batch -p /data/archive/test.csv -f window.eval -n 1
 
 # Interactive CLI (-it required)
 docker run -it --rm --network host \

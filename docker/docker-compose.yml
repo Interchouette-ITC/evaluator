@@ -28,5 +28,5 @@ volumes:
 
 # All-in-one: web :4000 + MCP HTTP :8788 (ENABLE_MCP=0 for web only)
 # make docker-pull-dev && make docker-run
-# CLI:  docker compose … run --rm evaluator evaluator -p /data/test.csv -n 1
+# CLI:  docker compose … run --rm evaluator evaluator -p /data/archive/test.csv -n 1
 # stdio: docker run -i --rm --network host -e EVALUATOR_URL=http://127.0.0.1:4000 interchouette/evaluator:dev mcp

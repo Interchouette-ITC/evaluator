@@ -40,7 +40,7 @@ help:
 	@echo "  make docker-build-dev      All-in-one build + :dev + :latest tags (CI)"
 	@echo "  make docker-build          All-in-one :$(TAG) + :$(APP_VERSION)"
 	@echo "  make docker-build-fast     Optional: host npm run build + package (web-only)"
-	@echo "  make docker-run-cli        ARGS='-p /data/test.csv -n 1' (needs gateway up)"
+	@echo "  make docker-run-cli        ARGS='-p /data/archive/test.csv -n 1' (needs gateway up)"
 	@echo "  make docker-run-mcp        MCP stdio against local :4000"
 	@echo "  make docker-stop"
 	@echo "  make version-show"

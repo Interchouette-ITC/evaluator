@@ -93,7 +93,7 @@ CLI / MCP (against a running gateway, or built into the all-in-one image):
 # One-shot evaluate
 make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'
 # CSV batch
-make docker-run-cli ARGS='batch -p /data/test.csv -n 1 -f window.eval'
+make docker-run-cli ARGS='batch -p /data/archive/test.csv -n 1 -f window.eval'
 # Interactive: docker run -it --rm --network host -e EVALUATOR_URL=http://127.0.0.1:4000 interchouette/evaluator:dev evaluator
 make docker-run-mcp          # stdio
 # MCP HTTP is published on :8788 with make docker-run (ENABLE_MCP=1)
@@ -168,7 +168,7 @@ cd ./evaluator
 cargo build
 # web on :4000
 cargo run -- evaluate --url https://example.com --fn window.eval
-cargo run -- batch -p test.csv -f window.eval -n 1
+cargo run -- batch -p archive/test.csv -f window.eval -n 1
 ```
 
 Global: `--gateway` / `EVALUATOR_URL` (default `http://127.0.0.1:4000`). Batch: `-p`, `-f`, `-n`, `-s`, optional `--legacy`.

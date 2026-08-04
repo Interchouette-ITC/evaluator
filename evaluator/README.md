@@ -21,7 +21,7 @@ Global: `--gateway URL` or `EVALUATOR_URL` (default `http://127.0.0.1:4000`).
 ```shell
 cargo run
 # evaluator> evaluate --url https://example.com --fn window.eval
-# evaluator> batch -p test.csv -f window.eval -n 1
+# evaluator> batch -p archive/test.csv -f window.eval -n 1
 # evaluator> quit
 ```
 
@@ -34,11 +34,11 @@ cargo run -- evaluate --url https://www.w3schools.com/jsref/tryit.asp?filename=t
 ### Batch CSV
 
 ```shell
-cargo run -- batch -p test.csv -f window.eval -n 1
+cargo run -- batch -p archive/test.csv -f window.eval -n 1
 # shorthand:
-cargo run -- -p test.csv -f window.eval -n 1
+cargo run -- -p archive/test.csv -f window.eval -n 1
 # teaching sample (no gateway):
-cargo run -- batch -p test.csv -f window.eval -n 1 --legacy
+cargo run -- batch -p archive/test.csv -f window.eval -n 1 --legacy
 ```
 
 Batch flags: `-p`/`--path`, `-f`/`--function`, `-n`/`--nb_threads`, `-s`/`--search_pattern`, `-t`/`--timeout` (legacy only), `--legacy`.
@@ -48,4 +48,4 @@ Batch flags: `-p`/`--path`, `-f`/`--function`, `-n`/`--nb_threads`, `-s`/`--sear
 - Default path: **web gateway** (Playwright or Puppeteer). Point `--gateway` / `EVALUATOR_URL` at a running stack (`make docker-run` or `:4000`).
 - `--legacy`: see [`legacy/README.md`](./legacy/README.md) — not production; needs Node + `puppeteer` from the monorepo root.
 - Large CSVs: prefer modest `-n`; the gateway serializes browser work.
-- Docker: `make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'` or `ARGS='batch -p /data/test.csv -n 1'`. Interactive needs `docker run -it … evaluator`.
+- Docker: `make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'` or `ARGS='batch -p /data/archive/test.csv -n 1'`. Interactive needs `docker run -it … evaluator`.
