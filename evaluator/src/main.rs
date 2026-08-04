@@ -79,6 +79,9 @@ struct EvaluateArgs {
     /// Path to frontend.txt-style malware rules
     #[arg(long = "rules", default_value_t = String::from(""))]
     rules: String,
+    /// Print only a snippet around each match (CHARS of context each side; default 80 if flag alone)
+    #[arg(long = "excerpt", num_args = 0..=1, default_missing_value = "80")]
+    excerpt: Option<usize>,
 }
 
 #[derive(Parser, Debug)]
@@ -104,6 +107,9 @@ struct BatchArgs {
     /// Path to frontend.txt-style malware rules
     #[arg(long = "rules", default_value_t = String::from(""))]
     rules: String,
+    /// Print only a snippet around each match (CHARS of context each side; default 80 if flag alone)
+    #[arg(long = "excerpt", num_args = 0..=1, default_missing_value = "80")]
+    excerpt: Option<usize>,
 }
 
 fn hit_filter_from(search: &str, regex: &str, rules: &str) -> HitFilter {
@@ -129,16 +135,19 @@ struct BatchRunner {
     legacy: bool,
     args: BatchArgs,
     filter: HitFilter,
+    excerpt: Option<usize>,
 }
 
 impl BatchRunner {
     fn new(gateway: String, legacy: bool, args: BatchArgs) -> Self {
         let filter = hit_filter_from(&args.search_pattern, &args.regex, &args.rules);
+        let excerpt = args.excerpt;
         Self {
             gateway,
             legacy,
             args,
             filter,
+            excerpt,
         }
     }
 
@@ -176,6 +185,7 @@ impl BatchRunner {
         let gateway = self.gateway.trim_end_matches('/').to_string();
         let function = self.args.function.clone();
         let filter = self.filter.clone();
+        let excerpt = self.excerpt;
 
         let jobs = stream::iter(sites.into_iter().map(|site| {
             let gateway = gateway.clone();
@@ -183,7 +193,7 @@ impl BatchRunner {
             let filter = filter.clone();
             async move {
                 async_std::task::spawn_blocking(move || {
-                    evaluate_http(&gateway, &site, &function, &filter)
+                    evaluate_http(&gateway, &site, &function, &filter, excerpt)
                 })
                 .await
             }
@@ -253,12 +263,17 @@ impl BatchRunner {
                 }
             }
             let _ = child.status().await;
-            print_site_results(&site, &results, &self.filter);
+            print_site_results(&site, &results, &self.filter, self.excerpt);
         }
     }
 }
 
-fn print_site_results(site: &str, results: &[String], filter: &HitFilter) {
+fn print_site_results(
+    site: &str,
+    results: &[String],
+    filter: &HitFilter,
+    excerpt: Option<usize>,
+) {
     println!("site: {}", site);
     let kept: Vec<(Vec<String>, &String)> = results
         .iter()
@@ -267,19 +282,41 @@ fn print_site_results(site: &str, results: &[String], filter: &HitFilter) {
     if kept.is_empty() {
         println!("results: none");
     } else if filter.is_active() {
-        for (labels, line) in kept {
-            for label in labels {
-                println!("match: {}", label);
+        for (_labels, line) in kept {
+            let hits = filter.match_hits(line);
+            if let Some(radius) = excerpt {
+                for (label, start, end) in hits {
+                    println!("match: {}", label);
+                    println!("  {}", filter.excerpt_span(line, start, end, radius));
+                }
+            } else {
+                for (label, _, _) in &hits {
+                    println!("match: {}", label);
+                }
+                println!("  {}", line);
             }
-            println!("  {}", line);
         }
     } else {
         println!("results:");
         for (_, line) in kept {
-            println!("  {}", line);
+            let shown = match excerpt {
+                Some(radius) => truncate_head(line, radius.saturating_mul(2).max(40)),
+                None => line.clone(),
+            };
+            println!("  {}", shown);
         }
     }
     println!();
+}
+
+fn truncate_head(s: &str, max: usize) -> String {
+    let mut chars = s.chars();
+    let head: String = chars.by_ref().take(max).collect();
+    if chars.next().is_some() {
+        format!("{head}…")
+    } else {
+        head
+    }
 }
 
 fn domain_column_index<'a>(headers: impl Iterator<Item = &'a str>) -> usize {
@@ -305,7 +342,13 @@ fn normalize_site(raw: &str) -> Option<String> {
     }
 }
 
-fn evaluate_http(gateway: &str, site: &str, function: &str, filter: &HitFilter) {
+fn evaluate_http(
+    gateway: &str,
+    site: &str,
+    function: &str,
+    filter: &HitFilter,
+    excerpt: Option<usize>,
+) {
     let mut url = format!("{}/evaluate?url={}", gateway, encode(site));
     if !function.is_empty() {
         url.push_str("&function=");
@@ -318,10 +361,9 @@ fn evaluate_http(gateway: &str, site: &str, function: &str, filter: &HitFilter) 
                 if filter.is_active() {
                     let payloads = extract_gateway_payloads(&body);
                     if payloads.is_empty() {
-                        // Fall back to whole-body match labels for crude keyword hits.
-                        print_site_results(site, &[body], filter);
+                        print_site_results(site, &[body], filter, excerpt);
                     } else {
-                        print_site_results(site, &payloads, filter);
+                        print_site_results(site, &payloads, filter, excerpt);
                     }
                 } else {
                     println!("site: {}", site);
@@ -339,7 +381,13 @@ fn legacy_script_path() -> String {
     format!("{}/legacy/evaluate.js", env!("CARGO_MANIFEST_DIR"))
 }
 
-async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, filter: &HitFilter) {
+async fn evaluate_legacy_one(
+    site: &str,
+    function: &str,
+    timeout: u32,
+    filter: &HitFilter,
+    excerpt: Option<usize>,
+) {
     let script = legacy_script_path();
     let mut child = Command::new("node")
         .arg(&script)
@@ -361,7 +409,7 @@ async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, filter: &
         }
     }
     let _ = child.status().await;
-    print_site_results(site, &results, filter);
+    print_site_results(site, &results, filter, excerpt);
 }
 
 /// Insert `batch` when legacy flat `-p`/`--path` is used without a subcommand.
@@ -395,13 +443,14 @@ async fn run_command(gateway: &str, legacy: bool, command: Commands) {
         Commands::Evaluate(args) => {
             let site = normalize_site(&args.url).unwrap_or_else(|| args.url.clone());
             let filter = hit_filter_from(&args.search_pattern, &args.regex, &args.rules);
+            let excerpt = args.excerpt;
             if legacy {
-                evaluate_legacy_one(&site, &args.function, 0, &filter).await;
+                evaluate_legacy_one(&site, &args.function, 0, &filter, excerpt).await;
             } else {
                 let gateway = gateway.trim_end_matches('/').to_string();
                 async_std::task::spawn_blocking({
                     let function = args.function.clone();
-                    move || evaluate_http(&gateway, &site, &function, &filter)
+                    move || evaluate_http(&gateway, &site, &function, &filter, excerpt)
                 })
                 .await;
             }
@@ -443,14 +492,15 @@ Session switches (interactive only):
   gateway | legacy off      switch this shell to gateway
 
 Commands:
-  evaluate --url URL [--fn F] [-s KWS] [--regex RE] [--rules PATH]
+  evaluate --url URL [--fn F] [-s KWS] [--regex RE] [--rules PATH] [--excerpt [N]]
       One URL. Uses session/global --legacy when set.
       -f chooses any JS function to hook (not eval-only).
 
-  batch -p CSV [-f F] [-n N] [-s KWS] [--regex RE] [--rules PATH] [-t MS]
+  batch -p CSV [-f F] [-n N] [-s KWS] [--regex RE] [--rules PATH] [--excerpt [N]] [-t MS]
       CSV with Domain column (or first column).
       -n / --nb_threads = max concurrent pages (default 1).
       -s = comma-separated keywords (OR); --regex / --rules filter payloads.
+      --excerpt [N] = print a short snippet around each match (default N=80).
       Use session legacy, or pass --legacy (global) on the line / argv.
       -t/--timeout only applies with legacy.
 

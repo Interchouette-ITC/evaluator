@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Demo — demo2grelos (grelos_v via eval, research only)</title>
+<!--
+  RESEARCH / DEMO ONLY — localhost. No Nest/Express public serve.
+  File: demo2grelos.html (pair with demo1shop.html)
+  Inert snippet shaped like published Grelos cleartext (Zone.ee / Willem rules).
+  Does NOT attach form listeners or POST stolen data.
+  Citations:
+    https://www.zone.ee/blogi/tuntud-veebipoode-nakatanud-pahavara-luubi/
+    https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt
+    https://malpedia.caad.fkie.fraunhofer.de/details/js.grelos
+-->
+</head>
+<body>
+<p>Demo <code>demo2grelos</code>: <code>eval</code> of a <code>grelos_v</code> marker (inert). Research use only.</p>
+<script>
+  // Packer-style: real skimmers often hide this until eval. Here we call eval directly.
+  eval(
+    "var grelos_v = { snd: null, Glink: 'https://example.invalid/research-only', myid: 'demo' };" +
+      " /* checkout|onepage research markers — no exfil */"
+  );
+</script>
+</body>
+</html>

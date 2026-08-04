@@ -29,6 +29,8 @@ Compose profile: `web` (ports `4000` + `8788`).
 
 ## References
 
+- Jérôme Segura (Malwarebytes), *Hunting web skimmers with VirusTotal and YARA*, VB2021: https://vblocalhost.com/uploads/VB2021-Segura.pdf
+- Product notes (Magecart / Grelos / Blogspot demo fixture): [`evaluator/MAGECART.md`](evaluator/MAGECART.md)
 - https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store
 - https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt
 

@@ -77,6 +77,10 @@ evaluator --legacy evaluate --url https://example.com --fn window.eval \
 
 Matching lines print as `match: <rule-or-keyword>` then the payload.
 
+Use `--excerpt` (or `--excerpt 120`) to print only a short snippet around the first hit instead of dumping multi‑KB payloads.
+
+**Magecart / Grelos:** product notes, Segura VB2021, Willem rules, and the Blogspot **demo fixture** (vs W3Schools canary) — see [`MAGECART.md`](./MAGECART.md) and [`archive/fixtures/`](./archive/fixtures/).
+
 Batch flags: `-p`/`--path`, `-f`/`--function`, `-n`/`--nb_threads`, `-s`/`--search_pattern`, `--regex`, `--rules`, `-t`/`--timeout` (legacy only), `--legacy`.
 
 ## Notes

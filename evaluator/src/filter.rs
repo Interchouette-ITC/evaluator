@@ -60,38 +60,93 @@ impl HitFilter {
     /// Keep payload? `Some(labels)` to print (labels empty when filter inactive);
     /// `None` when active and nothing matched.
     pub fn match_labels(&self, payload: &str) -> Option<Vec<String>> {
+        let hits = self.match_hits(payload);
         if !self.is_active() {
             return Some(Vec::new());
         }
-
-        let mut labels = Vec::new();
-
-        for kw in &self.keywords {
-            if payload.contains(kw) {
-                labels.push(format!("keyword:{kw}"));
-            }
-        }
-
-        if let Some(re) = &self.regex {
-            if re.is_match(payload) {
-                labels.push("regex".to_string());
-            }
-        }
-
-        for rule in &self.rules {
-            let hit = rule.literals.iter().any(|lit| payload.contains(lit))
-                || rule.regexes.iter().any(|re| re.is_match(payload));
-            if hit {
-                labels.push(rule.name.clone());
-            }
-        }
-
-        if labels.is_empty() {
+        if hits.is_empty() {
             None
         } else {
-            Some(labels)
+            Some(hits.into_iter().map(|(label, _, _)| label).collect())
         }
     }
+
+    /// Each hit: (label, byte start, byte end) of the matched needle/span.
+    pub fn match_hits(&self, payload: &str) -> Vec<(String, usize, usize)> {
+        if !self.is_active() {
+            return Vec::new();
+        }
+        let mut hits = Vec::new();
+        for kw in &self.keywords {
+            if let Some(i) = payload.find(kw.as_str()) {
+                hits.push((format!("keyword:{kw}"), i, i + kw.len()));
+            }
+        }
+        if let Some(re) = &self.regex {
+            if let Some(m) = re.find(payload) {
+                hits.push(("regex".to_string(), m.start(), m.end()));
+            }
+        }
+        for rule in &self.rules {
+            let mut rule_hit: Option<(usize, usize)> = None;
+            for lit in &rule.literals {
+                if let Some(i) = payload.find(lit.as_str()) {
+                    let span = (i, i + lit.len());
+                    if rule_hit.map_or(true, |r| span.0 < r.0) {
+                        rule_hit = Some(span);
+                    }
+                }
+            }
+            for re in &rule.regexes {
+                if let Some(m) = re.find(payload) {
+                    let span = (m.start(), m.end());
+                    if rule_hit.map_or(true, |r| span.0 < r.0) {
+                        rule_hit = Some(span);
+                    }
+                }
+            }
+            if let Some((s, e)) = rule_hit {
+                hits.push((rule.name.clone(), s, e));
+            }
+        }
+        hits
+    }
+
+    /// Snippet around an explicit byte span (`…` when truncated).
+    pub fn excerpt_span(&self, payload: &str, start: usize, end: usize, radius: usize) -> String {
+        let radius = radius.max(16);
+        let from = floor_char_boundary(payload, start.saturating_sub(radius));
+        let to = ceil_char_boundary(payload, (end + radius).min(payload.len()));
+        let mut out = String::new();
+        if from > 0 {
+            out.push('…');
+        }
+        out.push_str(&payload[from..to]);
+        if to < payload.len() {
+            out.push('…');
+        }
+        out
+    }
+}
+
+fn floor_char_boundary(s: &str, mut i: usize) -> usize {
+    if i >= s.len() {
+        return s.len();
+    }
+    while i > 0 && !s.is_char_boundary(i) {
+        i -= 1;
+    }
+    i
+}
+
+fn ceil_char_boundary(s: &str, mut i: usize) -> usize {
+    if i >= s.len() {
+        return s.len();
+    }
+    while i < s.len() && !s.is_char_boundary(i) {
+        i += 1;
+    }
+    i
 }
 
 fn load_rules_file(path: &Path) -> Result<Vec<Rule>, String> {
@@ -399,5 +454,20 @@ grelos_v.send
         let body = r#"[{"sha256":"abc","result":["hello","world"],"caller":""}]"#;
         let p = extract_gateway_payloads(body);
         assert_eq!(p, vec!["hello".to_string(), "world".to_string()]);
+    }
+
+    #[test]
+    fn excerpt_around_keyword() {
+        let f = HitFilter::try_new("grelos_v", None, None).unwrap();
+        let payload = format!("{}var grelos_v = null;{}", "x".repeat(200), "y".repeat(200));
+        let hits = f.match_hits(&payload);
+        assert_eq!(hits.len(), 1);
+        let (label, s, e) = &hits[0];
+        assert_eq!(label, "keyword:grelos_v");
+        let ex = f.excerpt_span(&payload, *s, *e, 20);
+        assert!(ex.contains("grelos_v"));
+        assert!(ex.starts_with('…'));
+        assert!(ex.ends_with('…'));
+        assert!(ex.len() < payload.len());
     }
 }
