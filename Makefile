@@ -24,7 +24,7 @@ DOCKER_BUILDKIT ?= 1
 CI ?= 0
 COMPOSE_PROD ?= docker/docker-compose.yml
 
-# Optional Chromium-free slim image (legacy; not published by CI)
+# Optional Chromium-free slim image (not published by CI)
 TOOLS_HUB_IMAGE ?= interchouette/evaluator-tools
 TOOLS_GHCR_PERSONAL ?= ghcr.io/groussac/evaluator-tools
 TOOLS_GHCR_ORG ?= ghcr.io/interchouette-itc/evaluator-tools

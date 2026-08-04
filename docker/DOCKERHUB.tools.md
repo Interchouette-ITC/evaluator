@@ -1,4 +1,4 @@
-# evaluator-tools (legacy)
+# evaluator-tools (optional slim image)
 
 **Superseded** by the all-in-one [`interchouette/evaluator`](https://hub.docker.com/r/interchouette/evaluator) image (web + Chromium + Rust CLI + MCP). Live: [evaluator.interchouette.net](https://evaluator.interchouette.net).
 

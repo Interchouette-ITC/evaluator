@@ -160,7 +160,8 @@ Gateway HTTP client under `./evaluator`:
 | --- | --- |
 | Interactive | `cargo run` (prompt until `quit`) |
 | One-shot | `cargo run -- evaluate --url … [--fn …]` |
-| CSV batch | `cargo run -- batch -p file.csv …` (legacy: `-p` without `batch`) |
+| CSV batch | `cargo run -- batch -p file.csv …` (or shorthand `-p` without `batch`) |
+| Teaching sample | `cargo run -- batch -p file.csv … --legacy` → [`evaluator/legacy/`](evaluator/legacy/README.md) |
 
 ```shell
 cd ./evaluator
@@ -170,7 +171,7 @@ cargo run -- evaluate --url https://example.com --fn window.eval
 cargo run -- batch -p test.csv -f window.eval -n 1
 ```
 
-Global: `--gateway` / `EVALUATOR_URL` (default `http://127.0.0.1:4000`). Batch: `-p`, `-f`, `-n`, `-s`, `--legacy-pupet`, `-t`.
+Global: `--gateway` / `EVALUATOR_URL` (default `http://127.0.0.1:4000`). Batch: `-p`, `-f`, `-n`, `-s`, optional `--legacy`.
 
 See [evaluator/README.md](evaluator/README.md) for details.
 

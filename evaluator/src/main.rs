@@ -64,15 +64,15 @@ struct BatchArgs {
     /// Max concurrent evaluations
     #[arg(short = 'n', long = "nb_threads", default_value_t = 1)]
     nb_threads: u8,
-    /// Navigation timeout (legacy pupet only)
+    /// Navigation timeout (legacy script only; 0 → script default)
     #[arg(short = 't', long = "timeout", default_value_t = 0)]
     timeout: u32,
-    /// Pattern to search (legacy pupet; HTTP mode filters printed body)
+    /// Pattern to search (legacy filters console hits; HTTP mode filters body)
     #[arg(short = 's', long = "search_pattern", default_value_t = String::from(""))]
     search_pattern: String,
-    /// Deprecated: spawn local node pupet.js instead of calling the gateway
-    #[arg(long = "legacy-pupet", default_value_t = false)]
-    legacy_pupet: bool,
+    /// Teaching sample: spawn local Node Puppeteer (`legacy/evaluate.js`) instead of the gateway
+    #[arg(long = "legacy", default_value_t = false)]
+    legacy: bool,
 }
 
 #[derive(Debug)]
@@ -87,7 +87,7 @@ impl BatchRunner {
     }
 
     async fn run(&mut self) {
-        if self.args.legacy_pupet {
+        if self.args.legacy {
             self.run_legacy().await;
         } else {
             self.run_http().await;
@@ -140,7 +140,9 @@ impl BatchRunner {
     }
 
     async fn run_legacy(&mut self) {
-        eprintln!("warning: --legacy-pupet is deprecated; prefer HTTP mode against EVALUATOR_URL");
+        eprintln!(
+            "legacy mode: local Node script (see evaluator/legacy/README.md); HTTP gateway is the default path"
+        );
         let mut file = File::open(&self.args.path).await.unwrap();
         let pos: u64 = {
             let mut reader = BufReader::new(file.by_ref());
@@ -179,16 +181,17 @@ impl BatchRunner {
     }
 
     async fn send_command(&mut self, site: String) -> Child {
-        eprintln!("legacy pupet: {}", &site);
+        let script = format!("{}/legacy/evaluate.js", env!("CARGO_MANIFEST_DIR"));
+        eprintln!("legacy: {} → {}", &site, script);
         Command::new("node")
-            .arg("pupet.js")
+            .arg(&script)
             .arg(site)
             .arg(&self.args.function)
             .arg(self.args.timeout.to_string())
             .arg(&self.args.search_pattern)
             .stdout(Stdio::piped())
             .spawn()
-            .expect("spawn node pupet.js (run from evaluator/ with Node+Puppeteer)")
+            .expect("spawn node legacy/evaluate.js (need repo-root npm install + Chromium)")
     }
 
     async fn print_results(&mut self, mut children: HashMap<String, Child>) {
@@ -287,7 +290,7 @@ async fn run_command(gateway: &str, command: Commands) {
         Commands::Batch(args) => {
             eprintln!(
                 "CSV={} gateway={} legacy={}",
-                args.path, gateway, args.legacy_pupet
+                args.path, gateway, args.legacy
             );
             let path = args.path.clone();
             BatchRunner::new(gateway.to_string(), args).run().await;

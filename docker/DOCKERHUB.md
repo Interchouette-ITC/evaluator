@@ -29,7 +29,7 @@ https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsre
 | `mcp` / `mcp --http` | MCP only (stdio or Streamable HTTP) |
 | `evaluator` / `cli` (no subcommand) | **Interactive** Rust prompt until `quit` / EOF; MCP sidecar if `ENABLE_MCP=1` |
 | `evaluator evaluate --url …` | **One-shot** GET `/evaluate` → print body → exit (no MCP) |
-| `evaluator batch -p file.csv …` | CSV batch (legacy flat `-p` also works) → exit (no MCP) |
+| `evaluator batch -p file.csv …` | CSV batch (flat `-p` without `batch` also works) → exit (no MCP) |
 
 ```bash
 IMAGE=interchouette/evaluator:dev
@@ -107,4 +107,4 @@ AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no au
 
 Source: https://github.com/Interchouette-ITC/evaluator
 
-> Legacy slim image `interchouette/evaluator-tools` is superseded by this all-in-one image.
+> Older slim image `interchouette/evaluator-tools` is superseded by this all-in-one image.
