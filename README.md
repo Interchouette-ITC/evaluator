@@ -226,7 +226,7 @@ To publish a release: bump **both** `package.json` and `evaluator/Cargo.toml` to
 
 ## Prerequisites
 
-- Node.js `>=22` on the host (you already have a current Node; agents must not install another)
+- Node.js `>=24` on the host (CI/Docker use Node 26; agents must not install another)
 - npm `>=11`
 - Docker web image: single `node:26-trixie-slim` multi-stage build with distro Chromium
 - Evaluate engine: **Playwright by default** on distro Chromium (`PUPPETEER_EXECUTABLE_PATH`); set `USE_PUPPETEER=1` for Puppeteer

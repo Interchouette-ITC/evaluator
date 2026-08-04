@@ -1,0 +1,11 @@
+# Keep GitHub Actions on current majors (Node 24+ action runtimes).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
