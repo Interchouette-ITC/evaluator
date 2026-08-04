@@ -14,9 +14,9 @@ Render will be redeployed from the Interchouette Docker image in a later pass.
 Browser (Angular SPA)
     → Express gateway :4000  (static, WS evaluate, GET /evaluate)
         → Nest API :3333     (/api/functions)
-        → Chromium via Puppeteer (default) or Playwright (`USE_PLAYWRIGHT=1`)
+        → Chromium via Playwright (default) or Puppeteer (`USE_PUPPETEER=1`)
 
-Same image also ships Rust CLI + MCP (stdio / HTTP :8788; default ENABLE_MCP=1)
+Same image also ships Rust CLI + MCP (prefer HTTP :8788; stdio optional)
     → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
 ```
 
@@ -58,7 +58,7 @@ Production / Docker Node gateway listens on port **4000**. A screenshot of the w
 
 Images (primary):
 
-- Docker Hub: `interchouette/evaluator` (web + CLI + MCP; Puppeteer or `USE_PLAYWRIGHT=1`)
+- Docker Hub: `interchouette/evaluator` (web + CLI + MCP; Playwright default, or `USE_PUPPETEER=1`)
 - GHCR: `ghcr.io/interchouette-itc/evaluator`
 - Personal GHCR (optional): `ghcr.io/groussac/evaluator`
 
@@ -106,7 +106,7 @@ To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create th
 - Node.js `>=22` on the host (you already have a current Node; agents must not install another)
 - npm `>=11`
 - Docker web image: single `node:26-trixie-slim` multi-stage build with distro Chromium
-- Evaluate engine: Puppeteer by default; set `USE_PLAYWRIGHT=1` to use Playwright against the same `PUPPETEER_EXECUTABLE_PATH` Chromium binary
+- Evaluate engine: **Playwright by default** on distro Chromium (`PUPPETEER_EXECUTABLE_PATH`); set `USE_PUPPETEER=1` for Puppeteer
 
 ```shell
 npm install
@@ -167,11 +167,30 @@ See [evaluator/README.md](evaluator/README.md) for terrain notes.
 
 Thin server in [`tools/mcp`](tools/mcp): tools `evaluate` and `list_functions` against `EVALUATOR_URL`.
 
+**Prefer MCP HTTP** when the all-in-one container exposes `:8788` (Cursor: `evaluator-http` → `http://127.0.0.1:8788/mcp`). Stdio (`… mcp` / Cursor `evaluator`) works but pays a Docker spawn cost on cold start.
+
 ```shell
 cd tools/mcp && npm ci
-EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs           # stdio
-EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp
+EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp (recommended)
+EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs           # stdio fallback
 ```
+
+## Engine and MCP advice (local bench)
+
+Same page and hook: `JSON.stringify` on `https://cursor.com`. Warmup discarded; wall times to gateway `/evaluate` (what both MCP transports call). Stdio numbers below include a cold `docker run --rm` per call.
+
+| Combo | Median | Notes |
+| --- | ---: | --- |
+| MCP HTTP + Playwright | ~9.5 s | **Recommended default** |
+| MCP HTTP + Puppeteer | ~11.3 s | Opt in with `USE_PUPPETEER=1` |
+| MCP stdio + Playwright | ~13.6 s | ~+4 s Docker spawn vs HTTP |
+| MCP stdio + Puppeteer | ~15.6 s | Slowest of the four |
+
+Takeaways:
+
+1. Prefer **Playwright** (default; unset or `USE_PUPPETEER=0`).
+2. Prefer **MCP HTTP** over stdio when `:8788` is up — same evaluate work, no spawn tax.
+3. Hit counts and screenshots were comparable across engines (~75–84 console hits).
 
 # License
 

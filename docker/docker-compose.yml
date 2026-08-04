@@ -13,7 +13,7 @@ services:
       - EVALUATOR_MCP_ADDR=0.0.0.0:8788
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-      - USE_PLAYWRIGHT=0
+      - USE_PUPPETEER=0
       - SQLITE_PATH=/app/data/database.db
       - FUNCTIONS_PATH=/app/data/functions.json
     volumes:

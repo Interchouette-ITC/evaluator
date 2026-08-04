@@ -74,7 +74,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           repository: interchouette/evaluator
-          short-description: Evaluate JS (Puppeteer/Playwright) — web + CLI + MCP all-in-one
+          short-description: Evaluate JS (Playwright default / Puppeteer) — web + CLI + MCP all-in-one
           readme-filepath: docker/DOCKERHUB.md
 
       - name: Log in to GHCR

@@ -23,8 +23,9 @@ export function chromiumExecutablePath(): string | undefined {
   return process.env['PUPPETEER_EXECUTABLE_PATH'] || undefined;
 }
 
-export function usePlaywright(): boolean {
-  const v = process.env['USE_PLAYWRIGHT'];
+/** Playwright is the default. Set USE_PUPPETEER=1 (or true) to force Puppeteer. */
+export function usePuppeteer(): boolean {
+  const v = process.env['USE_PUPPETEER'];
   return v === '1' || v === 'true' || v === 'TRUE';
 }
 

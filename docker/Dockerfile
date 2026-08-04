@@ -27,7 +27,7 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    USE_PLAYWRIGHT=0 \
+    USE_PUPPETEER=0 \
     NX_NO_CLOUD=true
 
 COPY package.json package-lock.json ./
@@ -63,7 +63,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
-    USE_PLAYWRIGHT=0 \
+    USE_PUPPETEER=0 \
     PORT=4000 \
     NODE_ENV=production \
     SQLITE_PATH=/app/data/database.db \
