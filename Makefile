@@ -1,9 +1,7 @@
 .PHONY: help \
 	build build-release check install clean run \
 	docker-build docker-build-fast docker-build-no-cache docker-build-dev \
-	docker-build-tools docker-build-tools-dev \
 	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
-	docker-push-tools-dev-hub docker-push-tools-dev-ghcr-personal docker-push-tools-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
 	docker-push-release-ghcr-personal docker-push-release-ghcr-itc \
 	docker-pull-dev docker-run docker-run-detached docker-run-dev docker-stop docker-inspect \
@@ -20,15 +18,9 @@ TAG ?= latest
 APP_VERSION ?= $(shell node -p "require('./package.json').version")
 DOCKERFILE ?= docker/Dockerfile
 DOCKERFILE_RUNTIME ?= docker/Dockerfile.runtime
-DOCKERFILE_TOOLS ?= docker/Dockerfile.tools
 DOCKER_BUILDKIT ?= 1
 CI ?= 0
 COMPOSE_PROD ?= docker/docker-compose.yml
-
-# Optional Chromium-free slim image (not published by CI)
-TOOLS_HUB_IMAGE ?= interchouette/evaluator-tools
-TOOLS_GHCR_PERSONAL ?= ghcr.io/groussac/evaluator-tools
-TOOLS_GHCR_ORG ?= ghcr.io/interchouette-itc/evaluator-tools
 
 # Host Rust CLI (./evaluator) — same shape as tvscreener-rs / kms
 unexport CARGO_TARGET_DIR
@@ -133,41 +125,6 @@ docker-build-dev:
 		-t $(GHCR_ORG_IMAGE):latest \
 		-f $(DOCKERFILE) \
 		.
-
-# Optional slim CLI+MCP (no Chromium) — not published by CI
-docker-build-tools:
-	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
-		-t $(APP_NAME)-tools:$(TAG) \
-		-t $(TOOLS_HUB_IMAGE):$(TAG) \
-		-t $(TOOLS_GHCR_PERSONAL):$(TAG) \
-		-t $(TOOLS_GHCR_ORG):$(TAG) \
-		-f $(DOCKERFILE_TOOLS) \
-		.
-
-docker-build-tools-dev:
-	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull \
-		-t $(APP_NAME)-tools:dev \
-		-t $(APP_NAME)-tools:latest \
-		-t $(TOOLS_HUB_IMAGE):dev \
-		-t $(TOOLS_HUB_IMAGE):latest \
-		-t $(TOOLS_GHCR_PERSONAL):dev \
-		-t $(TOOLS_GHCR_PERSONAL):latest \
-		-t $(TOOLS_GHCR_ORG):dev \
-		-t $(TOOLS_GHCR_ORG):latest \
-		-f $(DOCKERFILE_TOOLS) \
-		.
-
-docker-push-tools-dev-hub:
-	docker push $(TOOLS_HUB_IMAGE):dev
-	docker push $(TOOLS_HUB_IMAGE):latest
-
-docker-push-tools-dev-ghcr-personal:
-	docker push $(TOOLS_GHCR_PERSONAL):dev
-	docker push $(TOOLS_GHCR_PERSONAL):latest
-
-docker-push-tools-dev-ghcr-itc:
-	docker push $(TOOLS_GHCR_ORG):dev
-	docker push $(TOOLS_GHCR_ORG):latest
 
 docker-push-dev-hub:
 	docker push $(HUB_IMAGE):dev

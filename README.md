@@ -1,14 +1,113 @@
-# **_Evaluator_**
+# Evaluator
 
-This project aims to ease evaluating the parameters of javascript functions on a website.
+**Catch the cleartext the moment obfuscated JavaScript unpacks in a real browser.**
 
-Typically helps with deobfuscating https://stackoverflow.com/questions/32977908/how-can-i-deobfuscate-this-javascript using `String.fromCharCode` or `window.eval` or other functions like `JSON.stringify`
+Evaluator drives Chromium, hooks a JS function you choose (`window.eval`, `String.fromCharCode`, `JSON.stringify`, …), and prints the **arguments** that pass through that hook — often the deobfuscated payload Magecart-style skimmers hide until runtime.
 
-## Live
+```text
+compromised / demo page
+        │
+        ▼
+  obfuscated JS  ──packs──▶  window.eval(cleartext)
+        │                              │
+        │                              ▼
+        │                    evaluator hook + optional filter
+        │                    (-s / --regex / --rules)
+        ▼
+   screenshots + payloads you can read
+```
 
-Production: [https://evaluator.interchouette.net](https://evaluator.interchouette.net)
+| You get | It solves |
+| --- | --- |
+| Live **web UI** + screenshot stream | “What did this page actually `eval`?” |
+| **Rust CLI** (gateway or `--legacy`) | Batch / interactive hunts without guessing at packed source |
+| **MCP** tools for agents | Same evaluate path from Cursor / automation |
+| Local **demo fixtures** + Willem rules | Reproduce the VB2021 story on localhost before you touch live shops |
 
-## Architecture
+**Live:** [https://evaluator.interchouette.net](https://evaluator.interchouette.net)
+
+Typically helps with deobfuscating patterns like [this Stack Overflow case](https://stackoverflow.com/questions/32977908/how-can-i-deobfuscate-this-javascript) using `String.fromCharCode`, `window.eval`, or other functions like `JSON.stringify`.
+
+---
+
+## The story (why this exists)
+
+Static scanners (Willem’s rules, VT + YARA) see files on disk. Skimmers often stay opaque until the browser runs them. **Evaluator is the complementary runtime tool:** after the packer calls `eval`, you see `grelos_v`, `checkout`, gate URLs, and friends in the hook output.
+
+Full product notes (warnings, canary vs demos, batch): **[`evaluator/MAGECART.md`](evaluator/MAGECART.md)** — start there for Magecart / Grelos context.
+
+### References
+
+- Jérôme Segura (Malwarebytes), *Hunting web skimmers with VirusTotal and YARA*, VB2021 — [PDF](https://vblocalhost.com/uploads/VB2021-Segura.pdf)
+- Product notes (Magecart / Grelos / Blogspot demo fixtures): [`evaluator/MAGECART.md`](evaluator/MAGECART.md)
+- Astra — signs of hacked OpenCart / Magento / PrestaShop stores (malicious JS): [getastra.com article](https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store)
+- Willem de Groot — magento-malware-scanner frontend rules: [`rules/frontend.txt`](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt) (local snapshot: [`evaluator/rules/frontend.txt`](evaluator/rules/frontend.txt))
+
+<details open>
+<summary><strong>Screenshots</strong> — web UI in action</summary>
+
+![Evaluator (18)](https://user-images.githubusercontent.com/3099551/200139269-a50b8a15-dbcd-4414-9848-7331cb0dd3c5.png)
+
+![Evaluator (17)](https://user-images.githubusercontent.com/3099551/200139284-676f2ac4-042d-4de4-8b06-7f3345232996.png)
+
+</details>
+
+---
+
+## Try it in 30 seconds
+
+**Canary** (hook smoke test — W3Schools `eval`):
+
+```bash
+evaluator --legacy evaluate \
+  --url 'https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval' \
+  --fn window.eval
+# expect a payload like: x * y
+```
+
+**Same idea in the browser** (production gateway):
+
+```text
+https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval&function=window.eval
+```
+
+---
+
+## Demos — illustrate the PDF story on localhost
+
+Research fixtures under [`evaluator/archive/fixtures/`](evaluator/archive/fixtures/). **Serve only on localhost.** Do **not** expose them through Nest, Express, the Docker public image, or any internet-facing route. Details: [`DEOBFUSCATED.md`](evaluator/archive/fixtures/DEOBFUSCATED.md), [`MAGECART.md`](evaluator/MAGECART.md).
+
+| # | Obfuscated | Deobfuscated | What you learn |
+| --- | --- | --- | --- |
+| **1** | [`demo1shop.html`](evaluator/archive/fixtures/demo1shop.html) | [`demo1shop.deobfuscated.js`](evaluator/archive/fixtures/demo1shop.deobfuscated.js) | Neutral shop JS; historical `_0xd419` hex packer → `eval` → `checkout` / `cart` |
+| **2** | [`demo2grelos.html`](evaluator/archive/fixtures/demo2grelos.html) | [`demo2grelos.deobfuscated.js`](evaluator/archive/fixtures/demo2grelos.deobfuscated.js) | Grelos-shaped marker; light teaching packer |
+| **3** | [`demo3grelos.html`](evaluator/archive/fixtures/demo3grelos.html) | [`demo3grelos.deobfuscated.js`](evaluator/archive/fixtures/demo3grelos.deobfuscated.js) | Same marker; Magento-era `_0x` hex-table → `eval` (demo‑1 packing family) |
+
+```bash
+cd evaluator/archive/fixtures && python3 -m http.server 8765
+# or: ./smoke-demos.sh
+```
+
+```bash
+evaluator --legacy evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval -s checkout,cart --excerpt
+evaluator --legacy evaluate --url http://127.0.0.1:8765/demo2grelos.html --fn window.eval -s grelos_v --excerpt
+evaluator --legacy evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval -s grelos_v --excerpt
+```
+
+Filter live/batch hits with keywords, regex, or Willem’s rules:
+
+```bash
+evaluator batch -p evaluator/archive/All-Live-Magento-Sites.csv \
+  -f window.eval -n 2 -t 10000 --legacy \
+  --rules evaluator/rules/frontend.txt
+```
+
+**Authorized research only.** If you confirm a live compromise, report it responsibly to the merchant / hoster.
+
+---
+
+<details>
+<summary><strong>Architecture</strong></summary>
 
 ```text
 Browser (Angular SPA)
@@ -20,27 +119,22 @@ Same image also ships Rust CLI + MCP (prefer HTTP :8788; stdio optional)
     → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
 ```
 
-| Image | Role |
-| --- | --- |
-| `interchouette/evaluator` | All-in-one: web + Chromium + Rust CLI + MCP |
-| `interchouette/evaluator-tools` | Legacy slim CLI/MCP only (optional local build) |
+Image: `interchouette/evaluator` — web + Chromium + Rust CLI + MCP.
 
 Compose profile: `web` (ports `4000` + `8788`).
 
-## References
+How the pieces fit the hunt:
 
-- Jérôme Segura (Malwarebytes), *Hunting web skimmers with VirusTotal and YARA*, VB2021: https://vblocalhost.com/uploads/VB2021-Segura.pdf
-- Product notes (Magecart / Grelos / Blogspot demo fixture): [`evaluator/MAGECART.md`](evaluator/MAGECART.md)
-- https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store
-- https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt
+| Approach | What it sees | Strength |
+| --- | --- | --- |
+| Willem frontend/backend rules | File / CMS / static JS | Fast signature match on disk |
+| Segura VB2021 (VT + YARA) | Submitted HTML/JS corpus, gates | Hunt infrastructure at scale |
+| **Evaluator** | Live hooked call arguments | Sees post-`eval` cleartext in a real browser |
 
-![Evaluator (18)](https://user-images.githubusercontent.com/3099551/200139269-a50b8a15-dbcd-4414-9848-7331cb0dd3c5.png)
+</details>
 
-![Evaluator (17)](https://user-images.githubusercontent.com/3099551/200139284-676f2ac4-042d-4de4-8b06-7f3345232996.png)
-
-# Quick Start and Documentation
-
-## API
+<details>
+<summary><strong>API</strong> — Quick Start</summary>
 
 Use
 
@@ -62,7 +156,10 @@ https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsre
 
 Production / Docker Node gateway listens on port **4000**. A screenshot of the website is included in the response stream.
 
-# Docker
+</details>
+
+<details>
+<summary><strong>Docker</strong> — pull, run, build, CI/CD</summary>
 
 Images (primary):
 
@@ -113,7 +210,10 @@ Secret `RENDER_DEPLOY_HOOK` = full Render Deploy Hook URL (repo secret, not an a
 
 To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.
 
-# Development
+</details>
+
+<details>
+<summary><strong>Development</strong> — host Node, build, test</summary>
 
 ## Prerequisites
 
@@ -154,7 +254,10 @@ Then open http://localhost:4000/
 npm test
 ```
 
-# Rust CLI (host — no Docker)
+</details>
+
+<details>
+<summary><strong>Rust CLI</strong> — host, no Docker required</summary>
 
 Same shape as sibling ITC crates (`make build` / `make run` / `make install`):
 
@@ -176,7 +279,10 @@ make run ARGS='batch -p archive/test.csv -f window.eval -n 1 --legacy'
 
 See [evaluator/README.md](evaluator/README.md) for details.
 
-# MCP
+</details>
+
+<details open>
+<summary><strong>MCP</strong> — agent tools + engine advice</summary>
 
 Thin server in [`tools/mcp`](tools/mcp): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path` with a `Domain` column; max 50 URLs) against `EVALUATOR_URL`. Optional `body_cap` truncates response bodies when set. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
 
@@ -202,7 +308,7 @@ EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp (local
 EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs           # stdio fallback
 ```
 
-## Engine and MCP advice (local bench)
+### Engine and MCP advice (local bench)
 
 Same page and hook: `JSON.stringify` on `https://cursor.com`. Warmup discarded; wall times to gateway `/evaluate` (what both MCP transports call). Stdio numbers below include a cold `docker run --rm` per call.
 
@@ -218,6 +324,10 @@ Takeaways:
 1. Prefer **Playwright** (default; unset or `USE_PUPPETEER=0`).
 2. Prefer **MCP HTTP** over stdio when available — same evaluate work, no spawn tax. Local `:8788` or proxied `https://mcp:mcp@host/mcp`.
 3. Hit counts and screenshots were comparable across engines (~75–84 console hits).
+
+</details>
+
+---
 
 ## License
 

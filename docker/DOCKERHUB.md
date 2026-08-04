@@ -106,5 +106,3 @@ AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no au
 - `ghcr.io/groussac/evaluator` (optional mirror)
 
 Source: https://github.com/Interchouette-ITC/evaluator
-
-> Older slim image `interchouette/evaluator-tools` is superseded by this all-in-one image.
