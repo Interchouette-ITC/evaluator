@@ -118,6 +118,24 @@ async function mapPool(items, concurrency, worker) {
 
 /**
  * @param {string} text
+ * @param {number | undefined} body_cap
+ */
+function applyBodyCap(text, body_cap) {
+  if (body_cap == null || body_cap <= 0) return text;
+  return text.length > body_cap ? text.slice(0, body_cap) : text;
+}
+
+const bodyCapParam = z
+  .number()
+  .int()
+  .positive()
+  .optional()
+  .describe(
+    'Optional max characters for response body/bodies; omit for full payload'
+  );
+
+/**
+ * @param {string} text
  */
 function textResult(text, isError = false) {
   return {
@@ -141,8 +159,9 @@ function createServer() {
         .string()
         .optional()
         .describe('Function expression to evaluate (e.g. window.eval)'),
+      body_cap: bodyCapParam,
     },
-    async ({ url, function: fn }) => {
+    async ({ url, function: fn, body_cap }) => {
       const result = await evaluateOnce(url, fn);
       if (!result.ok) {
         const detail = result.status
@@ -150,15 +169,17 @@ function createServer() {
           : `evaluate failed: ${result.error ?? 'unknown'}`;
         return textResult(detail, true);
       }
-      return textResult(result.body ?? '');
+      return textResult(applyBodyCap(result.body ?? '', body_cap));
     }
   );
 
   server.tool(
     'list_functions',
     'List known evaluate function groups from the Nest API (/api/functions)',
-    {},
-    async () => {
+    {
+      body_cap: bodyCapParam,
+    },
+    async ({ body_cap }) => {
       const target = `${gateway}/api/functions`;
       try {
         const res = await fetch(target);
@@ -166,7 +187,8 @@ function createServer() {
         if (!res.ok) {
           return textResult(`HTTP ${res.status}: ${body.slice(0, 4000)}`, true);
         }
-        return textResult(body);      } catch (err) {
+        return textResult(applyBodyCap(body, body_cap));
+      } catch (err) {
         return textResult(
           `list_functions failed: ${err instanceof Error ? err.message : String(err)}`,
           true
@@ -198,8 +220,9 @@ function createServer() {
         .max(BATCH_MAX_CONCURRENCY)
         .optional()
         .describe(`Parallel evaluations (default 1, max ${BATCH_MAX_CONCURRENCY})`),
+      body_cap: bodyCapParam,
     },
-    async ({ urls, path, function: fn, concurrency }) => {
+    async ({ urls, path, function: fn, concurrency, body_cap }) => {
       if ((!urls || urls.length === 0) && !path) {
         return textResult(
           'batch requires at least one of: urls[] or path (CSV)',
@@ -253,7 +276,17 @@ function createServer() {
       const results = await mapPool(sites, conc, async (url) => {
         const r = await evaluateOnce(url, fn);
         if (r.ok) {
-          return { url, ok: true, status: r.status, body: r.body };
+          const body = r.body ?? '';
+          const capped = applyBodyCap(body, body_cap);
+          return {
+            url,
+            ok: true,
+            status: r.status,
+            body: capped,
+            ...(body_cap != null && capped.length < body.length
+              ? { body_capped: true }
+              : {}),
+          };
         }
         return {
           url,
@@ -270,6 +303,7 @@ function createServer() {
         ok: okCount,
         fail: failCount,
         concurrency: conc,
+        ...(body_cap != null ? { body_cap } : {}),
         results,
       };
       return textResult(JSON.stringify(payload));
