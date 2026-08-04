@@ -90,7 +90,11 @@ Optional local packaging after `npm run build`: `make docker-build-fast`.
 CLI / MCP (against a running gateway, or built into the all-in-one image):
 
 ```shell
-make docker-run-cli ARGS='-p /data/test.csv -n 1 -f window.eval'
+# One-shot evaluate
+make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'
+# CSV batch
+make docker-run-cli ARGS='batch -p /data/test.csv -n 1 -f window.eval'
+# Interactive: docker run -it --rm --network host -e EVALUATOR_URL=http://127.0.0.1:4000 interchouette/evaluator:dev evaluator
 make docker-run-mcp          # stdio
 # MCP HTTP is published on :8788 with make docker-run (ENABLE_MCP=1)
 ```
@@ -148,26 +152,25 @@ npm test
 
 # Rust CLI
 
-Batch evaluation helper under `./evaluator` — default mode calls the web gateway:
+Gateway HTTP client under `./evaluator`:
+
+| Mode | Command |
+| --- | --- |
+| Interactive | `cargo run` (prompt until `quit`) |
+| One-shot | `cargo run -- evaluate --url … [--fn …]` |
+| CSV batch | `cargo run -- batch -p file.csv …` (legacy: `-p` without `batch`) |
 
 ```shell
 cd ./evaluator
 cargo build
 # web on :4000
-cargo run -- -p test.csv -f window.eval -n 1
-# or: EVALUATOR_URL=http://127.0.0.1:4000 cargo run -- -p All-Live-Magento-Sites.csv -f window.eval -n 5
+cargo run -- evaluate --url https://example.com --fn window.eval
+cargo run -- batch -p test.csv -f window.eval -n 1
 ```
 
-Parameters:
+Global: `--gateway` / `EVALUATOR_URL` (default `http://127.0.0.1:4000`). Batch: `-p`, `-f`, `-n`, `-s`, `--legacy-pupet`, `-t`.
 
-- `-path` / `-p` CSV file (first column is website domain)
-- `-function` / `-f` function to evaluate
-- `-nb_threads` / `-n` concurrency
-- `--gateway` / `EVALUATOR_URL` gateway base (default `http://127.0.0.1:4000`)
-- `--legacy-pupet` deprecated local `node pupet.js` path
-- `-timeout` / `-t`, `-search_pattern` / `-s` — legacy pupet (HTTP mode only filters printed body for `-s`)
-
-See [evaluator/README.md](evaluator/README.md) for terrain notes.
+See [evaluator/README.md](evaluator/README.md) for details.
 
 # MCP
 

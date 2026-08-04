@@ -1,6 +1,7 @@
 #!/bin/sh
-# tvscreener-style entrypoint for the all-in-one evaluator image.
+# All-in-one evaluator image entrypoint.
 # Default: web :4000 + MCP HTTP :8788 (ENABLE_MCP=1). Set ENABLE_MCP=0 for web only.
+# CLI: interactive (long-lived + optional MCP) vs one-shot evaluate/batch (no MCP).
 set -eu
 
 ENABLE_MCP="${ENABLE_MCP:-1}"
@@ -28,6 +29,58 @@ start_mcp_http_sidecar() {
   ) &
 }
 
+start_mcp_http_sidecar_nowait() {
+  echo "[entrypoint] starting MCP HTTP sidecar on ${EVALUATOR_MCP_ADDR}" >&2
+  (
+    exec node /app/mcp/server.mjs --http
+  ) &
+}
+
+mcp_enabled() {
+  [ "${ENABLE_MCP}" = "1" ] || [ "${ENABLE_MCP}" = "true" ]
+}
+
+# True when CLI should keep the container alive (interactive prompt).
+cli_is_long_lived() {
+  if [ "$#" -eq 0 ]; then
+    return 0
+  fi
+  case "$1" in
+    evaluate|batch|--help|-h|-p|--path)
+      return 1
+      ;;
+    --path=*|-p*)
+      return 1
+      ;;
+    --gateway)
+      shift
+      # consume optional value
+      if [ "$#" -gt 0 ] && [ "${1#-}" = "$1" ]; then
+        shift
+      fi
+      cli_is_long_lived "$@"
+      return $?
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+run_cli() {
+  if cli_is_long_lived "$@"; then
+    if mcp_enabled; then
+      echo "[entrypoint] interactive CLI (gateway=${EVALUATOR_URL})" >&2
+      start_mcp_http_sidecar_nowait
+    else
+      echo "[entrypoint] interactive CLI (ENABLE_MCP=0)" >&2
+    fi
+  else
+    echo "[entrypoint] one-shot CLI (no MCP sidecar)" >&2
+  fi
+  exec evaluator "$@"
+}
+
 cmd="${1:-web}"
 if [ "$#" -gt 0 ]; then
   shift
@@ -35,7 +88,7 @@ fi
 
 case "$cmd" in
   web)
-    if [ "$ENABLE_MCP" = "1" ] || [ "$ENABLE_MCP" = "true" ]; then
+    if mcp_enabled; then
       start_mcp_http_sidecar
     else
       echo "[entrypoint] ENABLE_MCP=0 — web only" >&2
@@ -43,7 +96,6 @@ case "$cmd" in
     exec node /app/docker/serve.mjs
     ;;
   mcp)
-    # mcp | mcp --http | mcp with EVALUATOR_MCP_HTTP=1
     for a in "$@"; do
       if [ "$a" = "--http" ]; then
         mcp_http
@@ -56,10 +108,12 @@ case "$cmd" in
     exec node /app/mcp/server.mjs "$@"
     ;;
   cli | evaluator)
-    exec evaluator "$@"
+    run_cli "$@"
+    ;;
+  evaluate | batch | -p | --path | --help | -h | --gateway)
+    run_cli "$cmd" "$@"
     ;;
   *)
-    # Treat unknown first token as Rust CLI args (e.g. -p file.csv)
-    exec evaluator "$cmd" "$@"
+    run_cli "$cmd" "$@"
     ;;
 esac

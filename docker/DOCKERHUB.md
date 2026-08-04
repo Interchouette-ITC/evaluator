@@ -23,6 +23,14 @@ https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsre
 
 ## Modes
 
+| Invocation | Behavior |
+| --- | --- |
+| *(default / `web`)* | Web UI + API on `:4000`; MCP HTTP sidecar on `:8788` if `ENABLE_MCP=1` |
+| `mcp` / `mcp --http` | MCP only (stdio or Streamable HTTP) |
+| `evaluator` / `cli` (no subcommand) | **Interactive** Rust prompt until `quit` / EOF; MCP sidecar if `ENABLE_MCP=1` |
+| `evaluator evaluate --url …` | **One-shot** GET `/evaluate` → print body → exit (no MCP) |
+| `evaluator batch -p file.csv …` | CSV batch (legacy flat `-p` also works) → exit (no MCP) |
+
 ```bash
 IMAGE=interchouette/evaluator:dev
 
@@ -41,16 +49,26 @@ docker run --rm -i --network host -e EVALUATOR_URL=http://127.0.0.1:4000 "$IMAGE
 # MCP HTTP only
 docker run --rm -p 8788:8788 -e EVALUATOR_URL=http://host.docker.internal:4000 "$IMAGE" mcp --http
 
-# Rust CLI
+# One-shot evaluate
+docker run --rm --network host \
+  -e EVALUATOR_URL=http://127.0.0.1:4000 \
+  "$IMAGE" evaluator evaluate --url https://example.com --fn window.eval
+
+# CSV batch
 docker run --rm --network host \
   -e EVALUATOR_URL=http://127.0.0.1:4000 \
   -v "$PWD/evaluator:/data:ro" \
-  "$IMAGE" evaluator -p /data/test.csv -f window.eval -n 1
+  "$IMAGE" evaluator batch -p /data/test.csv -f window.eval -n 1
+
+# Interactive CLI (-it required)
+docker run -it --rm --network host \
+  -e EVALUATOR_URL=http://127.0.0.1:4000 \
+  "$IMAGE" evaluator
 ```
 
 | Env | Default | Meaning |
 | --- | --- | --- |
-| `ENABLE_MCP` | `1` | Start MCP HTTP beside web (`0` = web only) |
+| `ENABLE_MCP` | `1` | Start MCP HTTP beside web / interactive CLI (`0` = off) |
 | `USE_PUPPETEER` | `0` | `1` / `true` → Puppeteer; else Playwright |
 | `EVALUATOR_URL` | `http://127.0.0.1:4000` | Gateway for CLI / MCP |
 | `EVALUATOR_MCP_ADDR` | `0.0.0.0:8788` | MCP HTTP bind |
