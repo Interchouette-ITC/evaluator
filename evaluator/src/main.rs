@@ -13,8 +13,21 @@ use urlencoding::encode;
 #[derive(Parser, Debug)]
 #[command(
     name = "evaluator",
-    about = "Evaluate JS on pages via the evaluator web gateway",
-    after_help = "With no subcommand, starts an interactive prompt (type quit or exit to leave).\nShorthand: leading -p/--path without a subcommand is treated as `batch`.",
+    about = "Evaluate JS hooks on live pages (gateway by default; optional --legacy Puppeteer)",
+    after_help = "\
+Modes:
+  evaluator                         Interactive prompt (gateway)
+  evaluator --legacy                Interactive prompt (local Puppeteer)
+  evaluator evaluate --url …        One-shot via gateway GET /evaluate → exit
+  evaluator --legacy evaluate --url …
+                                    One-shot via legacy/evaluate.js
+  evaluator batch -p FILE …         CSV batch via gateway (needs :4000 / EVALUATOR_URL)
+  evaluator batch -p FILE … --legacy
+                                    Same CSV, local Node Puppeteer (no gateway)
+  evaluator -p FILE …               Shorthand for batch
+
+Interactive: help for overview; legacy / gateway to switch session mode; quit to leave.
+Gateway: --gateway / EVALUATOR_URL (default http://127.0.0.1:4000).",
     subcommand_required = false,
     arg_required_else_help = false
 )]
@@ -27,6 +40,10 @@ struct Cli {
         global = true
     )]
     gateway: String,
+
+    /// Use local Node Puppeteer (`legacy/evaluate.js`) instead of the gateway
+    #[arg(long = "legacy", default_value_t = false, global = true)]
+    legacy: bool,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -70,24 +87,26 @@ struct BatchArgs {
     /// Pattern to search (legacy filters console hits; HTTP mode filters body)
     #[arg(short = 's', long = "search_pattern", default_value_t = String::from(""))]
     search_pattern: String,
-    /// Teaching sample: spawn local Node Puppeteer (`legacy/evaluate.js`) instead of the gateway
-    #[arg(long = "legacy", default_value_t = false)]
-    legacy: bool,
 }
 
 #[derive(Debug)]
 struct BatchRunner {
     gateway: String,
+    legacy: bool,
     args: BatchArgs,
 }
 
 impl BatchRunner {
-    fn new(gateway: String, args: BatchArgs) -> Self {
-        Self { gateway, args }
+    fn new(gateway: String, legacy: bool, args: BatchArgs) -> Self {
+        Self {
+            gateway,
+            legacy,
+            args,
+        }
     }
 
     async fn run(&mut self) {
-        if self.args.legacy {
+        if self.legacy {
             self.run_legacy().await;
         } else {
             self.run_http().await;
@@ -175,7 +194,7 @@ impl BatchRunner {
     }
 
     async fn send_command(&mut self, site: String) -> Child {
-        let script = format!("{}/legacy/evaluate.js", env!("CARGO_MANIFEST_DIR"));
+        let script = legacy_script_path();
         eprintln!("legacy: {} → {}", &site, script);
         Command::new("node")
             .arg(&script)
@@ -253,6 +272,41 @@ fn evaluate_http(gateway: &str, site: &str, function: &str, search: &str) {
     }
 }
 
+fn legacy_script_path() -> String {
+    format!("{}/legacy/evaluate.js", env!("CARGO_MANIFEST_DIR"))
+}
+
+async fn evaluate_legacy_one(site: &str, function: &str, timeout: u32, search: &str) {
+    let script = legacy_script_path();
+    eprintln!("legacy: {} → {}", site, script);
+    let mut child = Command::new("node")
+        .arg(&script)
+        .arg(site)
+        .arg(function)
+        .arg(timeout.to_string())
+        .arg(search)
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("spawn node legacy/evaluate.js (need repo-root npm install + Chromium)");
+    if let Some(stdoutin) = child.stdout.as_mut() {
+        let mut lines = BufReader::new(stdoutin).lines();
+        let mut first = true;
+        while let Some(line) = AsyncStreamExt::next(&mut lines).await {
+            let line = line.expect("legacy stdout");
+            if first {
+                first = false;
+                if !line.is_empty() {
+                    println!("site: {}", site);
+                    println!("{:?}", &line);
+                }
+            } else {
+                println!("{:?}", line);
+            }
+        }
+    }
+    let _ = child.status().await;
+}
+
 /// Insert `batch` when legacy flat `-p`/`--path` is used without a subcommand.
 fn with_batch_compat(mut args: Vec<String>) -> Vec<String> {
     if args.is_empty() {
@@ -279,41 +333,112 @@ fn argv_with_batch_compat() -> Vec<String> {
     with_batch_compat(std::env::args().collect())
 }
 
-async fn run_command(gateway: &str, command: Commands) {
+async fn run_command(gateway: &str, legacy: bool, command: Commands) {
     match command {
         Commands::Evaluate(args) => {
-            let gateway = gateway.trim_end_matches('/');
             let site = normalize_site(&args.url).unwrap_or_else(|| args.url.clone());
-            async_std::task::spawn_blocking({
-                let gateway = gateway.to_string();
-                let function = args.function.clone();
-                let search = args.search_pattern.clone();
-                move || evaluate_http(&gateway, &site, &function, &search)
-            })
-            .await;
+            if legacy {
+                evaluate_legacy_one(&site, &args.function, 0, &args.search_pattern).await;
+            } else {
+                let gateway = gateway.trim_end_matches('/').to_string();
+                async_std::task::spawn_blocking({
+                    let function = args.function.clone();
+                    let search = args.search_pattern.clone();
+                    move || evaluate_http(&gateway, &site, &function, &search)
+                })
+                .await;
+            }
         }
         Commands::Batch(args) => {
             eprintln!(
                 "CSV={} gateway={} legacy={}",
-                args.path, gateway, args.legacy
+                args.path, gateway, legacy
             );
             let path = args.path.clone();
-            BatchRunner::new(gateway.to_string(), args).run().await;
+            BatchRunner::new(gateway.to_string(), legacy, args)
+                .run()
+                .await;
             eprintln!("done {}", path);
         }
     }
 }
 
-async fn run_interactive(gateway: String) {
-    let mut stdout = io::stdout();
-    let _ = writeln!(
-        stdout,
-        "evaluator interactive mode — enter a subcommand (evaluate, batch); quit or exit to leave"
+fn print_modes_help(gateway: &str, session_legacy: bool) {
+    let mode = if session_legacy {
+        "LEGACY (local Puppeteer)"
+    } else {
+        "gateway"
+    };
+    eprintln!(
+        "\
+evaluator — modes (this shell: {mode})
+
+  Default path = HTTP gateway  ({gateway})
+  Needs a running stack on that URL (make docker-run, or local :4000).
+  Engine there: Playwright (default) or Puppeteer (USE_PUPPETEER=1).
+
+  --legacy / session legacy = local Node script evaluator/legacy/evaluate.js
+  No gateway. Needs npm ci at repo root + Chromium
+  (PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium).
+
+Start:
+  evaluator                 interactive gateway
+  evaluator --legacy        interactive legacy
+
+Session switches (interactive only):
+  legacy | legacy on        switch this shell to legacy
+  gateway | legacy off      switch this shell to gateway
+
+Commands:
+  evaluate --url URL [--fn F] [--search S]
+      One URL. Uses session/global --legacy when set.
+
+  batch -p CSV [-f F] [-n N] [-s S] [-t MS]
+      CSV with Domain column (or first column).
+      Use session legacy, or pass --legacy (global) on the line / argv.
+      -t/--timeout only applies with legacy.
+
+  help [evaluate|batch]   This overview, or clap flags for a subcommand
+  quit | exit | q         Leave interactive mode
+
+Examples:
+  evaluate --url https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval --fn window.eval
+  batch -p archive/test.csv -f window.eval -n 1
+  --legacy batch -p archive/test.csv -f window.eval -n 1
+
+Tips:
+  • Global --gateway / EVALUATOR_URL overrides the default URL.
+  • Shorthand: leading -p without `batch` is treated as batch."
     );
+}
+
+fn print_interactive_banner(gateway: &str, legacy: bool) {
+    let mut stdout = io::stdout();
+    if legacy {
+        let _ = writeln!(
+            stdout,
+            "evaluator interactive — LEGACY mode (local Puppeteer, no gateway)\n  tip: help | evaluate / batch use legacy | `gateway` to switch | quit"
+        );
+    } else {
+        let _ = writeln!(
+            stdout,
+            "evaluator interactive — gateway mode\n  gateway: {gateway}\n  tip: help | evaluate / batch | `legacy` to switch | quit"
+        );
+    }
     let _ = stdout.flush();
+}
+
+async fn run_interactive(gateway: String, mut session_legacy: bool) {
+    let mut stdout = io::stdout();
+    print_interactive_banner(&gateway, session_legacy);
 
     loop {
-        let _ = write!(stdout, "evaluator> ");
+        let prompt = if session_legacy {
+            "evaluator[legacy]> "
+        } else {
+            "evaluator> "
+        };
+        let _ = write!(stdout, "{prompt}");
         let _ = stdout.flush();
         let mut line = String::new();
         let n = match io::stdin().read_line(&mut line) {
@@ -331,18 +456,45 @@ async fn run_interactive(gateway: String) {
         if trimmed.is_empty() {
             continue;
         }
-        if matches!(trimmed.to_ascii_lowercase().as_str(), "quit" | "exit" | "q") {
+        let lower = trimmed.to_ascii_lowercase();
+        if matches!(lower.as_str(), "quit" | "exit" | "q") {
             break;
         }
-        if matches!(trimmed, "help" | "--help" | "-h") {
-            let _ = Cli::command().print_help();
-            let _ = writeln!(stdout);
+        if matches!(lower.as_str(), "legacy" | "legacy on") {
+            session_legacy = true;
+            print_interactive_banner(&gateway, true);
+            continue;
+        }
+        if matches!(lower.as_str(), "gateway" | "legacy off") {
+            session_legacy = false;
+            print_interactive_banner(&gateway, false);
+            continue;
+        }
+
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        let head = parts.first().copied().unwrap_or("").to_ascii_lowercase();
+        if matches!(head.as_str(), "help" | "--help" | "-h") {
+            match parts.get(1).map(|s| s.to_ascii_lowercase()) {
+                Some(sub) if sub == "evaluate" || sub == "batch" => {
+                    let mut cmd = Cli::command();
+                    if let Some(sub_cmd) = cmd.find_subcommand_mut(sub.as_str()) {
+                        let _ = sub_cmd.print_long_help();
+                        let _ = writeln!(stdout);
+                    } else {
+                        eprintln!("unknown subcommand for help: {sub}");
+                    }
+                }
+                Some(_) => {
+                    eprintln!("usage: help [evaluate|batch]");
+                    print_modes_help(&gateway, session_legacy);
+                }
+                None => print_modes_help(&gateway, session_legacy),
+            }
             continue;
         }
 
         let mut argv = vec!["evaluator".to_string()];
-        argv.extend(trimmed.split_whitespace().map(str::to_string));
-        // Interactive lines may also use legacy -p without `batch`
+        argv.extend(parts.iter().map(|s| (*s).to_string()));
         if argv.len() > 1 {
             let rest = &argv[1..];
             let has_subcommand = rest
@@ -360,18 +512,22 @@ async fn run_interactive(gateway: String) {
         match Cli::try_parse_from(&argv) {
             Ok(parsed) => match parsed.command {
                 Some(command) => {
-                    let line_sets_gateway = argv.iter().any(|s| {
-                        s == "--gateway" || s.starts_with("--gateway=")
-                    });
+                    let line_sets_gateway = argv
+                        .iter()
+                        .any(|s| s == "--gateway" || s.starts_with("--gateway="));
                     let gw = if line_sets_gateway {
                         parsed.gateway
                     } else {
                         gateway.clone()
                     };
-                    run_command(&gw, command).await;
+                    let line_legacy = parsed.legacy;
+                    let use_legacy = session_legacy || line_legacy;
+                    run_command(&gw, use_legacy, command).await;
                 }
                 None => {
-                    eprintln!("enter a subcommand (e.g. evaluate --url https://example.com --fn window.eval), or quit");
+                    eprintln!(
+                        "enter evaluate / batch, help, legacy, gateway, or quit"
+                    );
                 }
             },
             Err(err) => {
@@ -385,8 +541,10 @@ async fn run_interactive(gateway: String) {
 async fn main() {
     let cli = Cli::parse_from(argv_with_batch_compat());
     match cli.command {
-        Some(command) => run_command(&cli.gateway, command).await,
-        None => run_interactive(cli.gateway).await,
+        Some(command) => {
+            run_command(&cli.gateway, cli.legacy, command).await;
+        }
+        None => run_interactive(cli.gateway, cli.legacy).await,
     }
 }
 
@@ -447,6 +605,13 @@ mod tests {
             Some(Commands::Batch(a)) => assert_eq!(a.path, "sites.csv"),
             _ => panic!("expected batch"),
         }
+    }
+
+    #[test]
+    fn global_legacy_flag() {
+        let cli = Cli::try_parse_from(["evaluator", "--legacy"]).expect("parse");
+        assert!(cli.legacy);
+        assert!(cli.command.is_none());
     }
 
     #[test]

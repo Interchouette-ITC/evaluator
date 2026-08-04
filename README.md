@@ -164,10 +164,11 @@ make run ARGS='batch -p archive/test.csv -f window.eval -n 1 --legacy'
 
 | Mode | Command |
 | --- | --- |
-| Interactive | `make run` or `evaluator` (prompt until `quit`) |
+| Interactive (gateway) | `make run` or `evaluator` |
+| Interactive (legacy) | `evaluator --legacy` (prompt `evaluator[legacy]>`; type `gateway` / `legacy` to switch) |
 | One-shot | `evaluator evaluate --url … [--fn …]` |
 | CSV batch (gateway) | `evaluator batch -p archive/test.csv -f window.eval -n 1` |
-| Teaching sample | `… --legacy` → local Puppeteer [`evaluator/legacy/`](evaluator/legacy/README.md) (needs `npm ci` + Chromium) |
+| Teaching sample | `evaluator --legacy` / `… --legacy` → local Puppeteer [`evaluator/legacy/`](evaluator/legacy/README.md) (needs `npm ci` + Chromium) |
 
 `--legacy` does **not** need the gateway. Default batch/evaluate talk to `EVALUATOR_URL` / `--gateway` (default `http://127.0.0.1:4000`).
 

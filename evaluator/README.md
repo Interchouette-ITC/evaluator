@@ -1,51 +1,56 @@
 # Evaluator CLI (Rust)
 
-HTTP client for the evaluator gateway (`GET /evaluate`). Build with `cargo build` in this directory.
+Host binary under this directory. Build with `make build` / `make install` from the repo root, or `cargo build` here.
 
-The browser work itself lives in the Nest stack (`libs/util/puppeteer`: Playwright by default). A small local Puppeteer teaching sample is under [`legacy/`](./legacy/README.md).
+**Default = HTTP gateway** (`GET /evaluate` on `--gateway` / `EVALUATOR_URL`, usually `:4000`). Browser work lives in the Nest stack (Playwright by default; `USE_PUPPETEER=1` for Puppeteer).
+
+**`--legacy`** = local teaching Puppeteer under [`legacy/`](./legacy/README.md) — no gateway. Works as a **global** flag (interactive shell + `evaluate` + `batch`) or on `batch` alone.
 
 ## Modes
 
 | Invocation | Behavior |
 | --- | --- |
-| `evaluator` (no subcommand) | Interactive prompt until `quit` / `exit` / `q` / EOF |
-| `evaluator evaluate --url URL [--fn F] [--search S]` | One-shot evaluate → print body → exit |
-| `evaluator batch -p PATH …` | CSV batch via gateway (`Domain` column / first column) |
-| `evaluator batch -p PATH … --legacy` | Same CSV, but each row runs `legacy/evaluate.js` locally |
+| `evaluator` | Interactive **gateway** prompt; type `help` |
+| `evaluator --legacy` | Interactive **legacy** prompt (`evaluator[legacy]>`) |
+| `evaluator evaluate --url URL …` | One-shot via gateway → exit |
+| `evaluator --legacy evaluate --url URL …` | One-shot via `legacy/evaluate.js` |
+| `evaluator batch -p PATH …` | CSV batch via gateway |
+| `evaluator batch -p PATH … --legacy` | Same (global `--legacy` after subcommand) |
+| `evaluator --legacy batch -p PATH …` | CSV via local Puppeteer |
 | `evaluator -p PATH …` | Same as `batch` (shorthand) |
 
-Global: `--gateway URL` or `EVALUATOR_URL` (default `http://127.0.0.1:4000`).
+In the interactive shell: type `legacy` / `gateway` to switch session mode (evaluate/batch follow the session). Global: `--gateway` / `EVALUATOR_URL` (default `http://127.0.0.1:4000`).
 
 ### Interactive
 
 ```shell
-cargo run
-# evaluator> evaluate --url https://example.com --fn window.eval
-# evaluator> batch -p archive/test.csv -f window.eval -n 1
+evaluator --legacy
+# evaluator[legacy]> evaluate --url https://example.com --fn window.eval
+# evaluator[legacy]> batch -p archive/test.csv -f window.eval -n 1
+# evaluator[legacy]> gateway          # switch to gateway session
+# evaluator> legacy                   # switch back
 # evaluator> quit
 ```
 
 ### One-shot
 
 ```shell
-cargo run -- evaluate --url https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval --fn window.eval
+evaluator evaluate --url https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval --fn window.eval
+evaluator --legacy evaluate --url https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval --fn window.eval
 ```
 
 ### Batch CSV
 
 ```shell
-cargo run -- batch -p archive/test.csv -f window.eval -n 1
-# shorthand:
-cargo run -- -p archive/test.csv -f window.eval -n 1
-# teaching sample (no gateway):
-cargo run -- batch -p archive/test.csv -f window.eval -n 1 --legacy
+evaluator batch -p archive/test.csv -f window.eval -n 1
+evaluator -p archive/test.csv -f window.eval -n 1
+evaluator batch -p archive/test.csv -f window.eval -n 1 --legacy
 ```
 
 Batch flags: `-p`/`--path`, `-f`/`--function`, `-n`/`--nb_threads`, `-s`/`--search_pattern`, `-t`/`--timeout` (legacy only), `--legacy`.
 
 ## Notes
 
-- Default path: **web gateway** (Playwright or Puppeteer). Point `--gateway` / `EVALUATOR_URL` at a running stack (`make docker-run` or `:4000`).
-- `--legacy`: see [`legacy/README.md`](./legacy/README.md) — not production; needs Node + `puppeteer` from the monorepo root.
+- `--legacy`: needs Node + `puppeteer` from the monorepo root + Chromium.
 - Large CSVs: prefer modest `-n`; the gateway serializes browser work.
-- Docker: `make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'` or `ARGS='batch -p /data/archive/test.csv -n 1'`. Interactive needs `docker run -it … evaluator`.
+- Docker: `make docker-run-cli ARGS='…'`. Interactive needs `docker run -it … evaluator`.
