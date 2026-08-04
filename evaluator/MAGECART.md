@@ -54,7 +54,13 @@ evaluator --legacy evaluate \
 # expect a payload like: x * y
 ```
 
-### Demo = `demo1shop` / `demo2grelos` fixtures
+### Demos (`archive/fixtures/`)
+
+| # | Obfuscated | Deobfuscated | Role |
+| --- | --- | --- | --- |
+| 1 | `demo1shop.html` | `demo1shop.deobfuscated.js` | Neutral shop JS; historical `_0xd419` hex packer |
+| 2 | `demo2grelos.html` | `demo2grelos.deobfuscated.js` | Grelos marker; light teaching packer |
+| 3 | `demo3grelos.html` | `demo3grelos.deobfuscated.js` | Grelos marker; Magento-era `_0x` hex-table → `eval` |
 
 ```bash
 cd evaluator/archive/fixtures && python3 -m http.server 8765
@@ -62,22 +68,12 @@ cd evaluator/archive/fixtures && python3 -m http.server 8765
 ```
 
 ```bash
-# Packer → simpleCart cleartext (checkout/cart are library keys, not skimmer URL checks)
-evaluator --legacy evaluate \
-  --url http://127.0.0.1:8765/demo1shop.html \
-  --fn window.eval \
-  -s checkout,onepage,cart,grelos_v \
-  --excerpt
-
-# Inert grelos_v marker
-evaluator --legacy evaluate \
-  --url http://127.0.0.1:8765/demo2grelos.html \
-  --fn window.eval \
-  -s grelos_v \
-  --excerpt
+evaluator --legacy evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval -s checkout,cart --excerpt
+evaluator --legacy evaluate --url http://127.0.0.1:8765/demo2grelos.html --fn window.eval -s grelos_v --excerpt
+evaluator --legacy evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval -s grelos_v --excerpt
 ```
 
-Details: [`archive/fixtures/README.md`](./archive/fixtures/README.md).
+See [`archive/fixtures/README.md`](./archive/fixtures/README.md) and [`archive/fixtures/DEOBFUSCATED.md`](./archive/fixtures/DEOBFUSCATED.md).
 
 ### Batch
 

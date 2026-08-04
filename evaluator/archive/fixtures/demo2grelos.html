@@ -2,26 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<title>Demo — demo2grelos (grelos_v via eval, research only)</title>
+<title>Demo 2 — grelos (teaching packer)</title>
 <!--
-  RESEARCH / DEMO ONLY — localhost. No Nest/Express public serve.
-  File: demo2grelos.html (pair with demo1shop.html)
-  Inert snippet shaped like published Grelos cleartext (Zone.ee / Willem rules).
-  Does NOT attach form listeners or POST stolen data.
-  Citations:
-    https://www.zone.ee/blogi/tuntud-veebipoode-nakatanud-pahavara-luubi/
-    https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt
-    https://malpedia.caad.fkie.fraunhofer.de/details/js.grelos
+  RESEARCH / DEMO ONLY — localhost.
+  Obfuscated: decimal char-code → String.fromCharCode → eval (teaching only; not historical Grelos packing).
+  For Magento-era hex-table packing + same marker, see demo3grelos.html.
+  Cleartext: demo2grelos.deobfuscated.js
 -->
 </head>
 <body>
-<p>Demo <code>demo2grelos</code>: <code>eval</code> of a <code>grelos_v</code> marker (inert). Research use only.</p>
+<p>Demo 2 — teaching packer + Grelos marker. Prefer <code>demo3grelos.html</code> for hex-table style. Cleartext: <code>demo2grelos.deobfuscated.js</code></p>
 <script>
-  // Packer-style: real skimmers often hide this until eval. Here we call eval directly.
-  eval(
-    "var grelos_v = { snd: null, Glink: 'https://example.invalid/research-only', myid: 'demo' };" +
-      " /* checkout|onepage research markers — no exfil */"
-  );
+(function(){
+  var _0xd2=[118,97,114,32,103,114,101,108,111,115,95,118,32,61,32,123,32,115,110,100,58,32,110,117,108,108,44,32,71,108,105,110,107,58,32,39,104,116,116,112,115,58,47,47,101,120,97,109,112,108,101,46,105,110,118,97,108,105,100,47,114,101,115,101,97,114,99,104,45,111,110,108,121,39,44,32,109,121,105,100,58,32,39,100,101,109,111,39,32,125,59];
+  var s='';
+  for(var i=0;i<_0xd2.length;i++)s+=String.fromCharCode(_0xd2[i]);
+  eval(s);
+})();
 </script>
 </body>
 </html>

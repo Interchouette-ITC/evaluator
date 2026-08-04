@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-test demo1shop + demo2grelos against a local static server.
+# Smoke-test demo1shop + demo2grelos + demo3grelos against a local static server.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -68,6 +68,18 @@ OUT_G="$(evaluator --legacy evaluate \
 echo "$OUT_G"
 echo "$OUT_G" | grep -q 'match: keyword:grelos_v' || {
   echo "FAIL: demo2grelos expected grelos_v match" >&2
+  exit 1
+}
+
+echo "== demo3grelos (expect grelos_v; hex-table packer) =="
+OUT_G3="$(evaluator --legacy evaluate \
+  --url "${BASE}/demo3grelos.html" \
+  --fn window.eval \
+  -s grelos_v \
+  --excerpt)"
+echo "$OUT_G3"
+echo "$OUT_G3" | grep -q 'match: keyword:grelos_v' || {
+  echo "FAIL: demo3grelos expected grelos_v match" >&2
   exit 1
 }
 
