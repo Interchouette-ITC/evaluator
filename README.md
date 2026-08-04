@@ -177,7 +177,7 @@ See [evaluator/README.md](evaluator/README.md) for details.
 
 # MCP
 
-Thin server in [`tools/mcp`](tools/mcp): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path`; max 50 URLs) against `EVALUATOR_URL`. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
+Thin server in [`tools/mcp`](tools/mcp): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path` with a `Domain` column; max 50 URLs) against `EVALUATOR_URL`. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
 
 **Prefer MCP HTTP** over stdio (stdio pays a Docker spawn cost on cold start).
 

@@ -55,7 +55,7 @@ struct EvaluateArgs {
 
 #[derive(Parser, Debug)]
 struct BatchArgs {
-    /// Path to the CSV file (Domain column)
+    /// Path to the CSV file (`Domain` column, or first column)
     #[arg(short = 'p', long = "path")]
     path: String,
     /// Function to evaluate
@@ -96,17 +96,19 @@ impl BatchRunner {
 
     async fn run_http(&mut self) {
         let file = File::open(&self.args.path).await.expect("open CSV");
-        let reader = AsyncReaderBuilder::new()
+        let mut reader = AsyncReaderBuilder::new()
             .delimiter(b',')
             .has_headers(true)
             .create_reader(file);
+        let headers = reader.headers().await.expect("CSV headers").clone();
+        let col = domain_column_index(headers.iter());
         let mut records = reader.into_records();
 
         let mut sites = Vec::new();
         while let Some(result) = AsyncStreamExt::next(&mut records).await {
             match result {
                 Ok(res) => {
-                    if let Some(site) = normalize_site(res.get(0).unwrap_or("")) {
+                    if let Some(site) = normalize_site(res.get(col).unwrap_or("")) {
                         sites.push(site);
                     }
                 }
@@ -139,17 +141,19 @@ impl BatchRunner {
             "legacy mode: local Node script (see evaluator/legacy/README.md); HTTP gateway is the default path"
         );
         let file = File::open(&self.args.path).await.unwrap();
-        let reader = AsyncReaderBuilder::new()
+        let mut reader = AsyncReaderBuilder::new()
             .delimiter(b',')
             .has_headers(true)
             .create_reader(file);
+        let headers = reader.headers().await.expect("CSV headers").clone();
+        let col = domain_column_index(headers.iter());
         let mut records = reader.into_records();
         let mut children: HashMap<String, Child> = HashMap::new();
         let mut i = 0u8;
         while let Some(result) = AsyncStreamExt::next(&mut records).await {
             match result {
                 Ok(res) => {
-                    let site = match normalize_site(res.get(0).unwrap_or("")) {
+                    let site = match normalize_site(res.get(col).unwrap_or("")) {
                         Some(s) => s,
                         None => continue,
                     };
@@ -201,6 +205,17 @@ impl BatchRunner {
             };
         }
     }
+}
+
+fn domain_column_index<'a>(headers: impl Iterator<Item = &'a str>) -> usize {
+    headers
+        .enumerate()
+        .find(|(_, h)| {
+            let h = h.trim().to_ascii_lowercase();
+            h == "domain" || h == "url"
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0)
 }
 
 fn normalize_site(raw: &str) -> Option<String> {

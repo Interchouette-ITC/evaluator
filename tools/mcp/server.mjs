@@ -44,20 +44,27 @@ function normalizeSite(raw) {
 }
 
 /**
+ * Load sites from a CSV. Prefers a `Domain` (or `url`) header column; else column 0.
  * @param {string} path
  * @returns {Promise<string[]>}
  */
 async function loadCsvUrls(path) {
   const text = await readFile(path, 'utf8');
-  const lines = text.split(/\r?\n/);
+  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return [];
+
+  const splitCols = (line) =>
+    line.split(',').map((c) => c.trim().replace(/^["']|["']$/g, ''));
+
+  const header = splitCols(lines[0]).map((h) => h.toLowerCase());
+  let col = header.findIndex((h) => h === 'domain' || h === 'url');
+  if (col < 0) col = 0;
+
   /** @type {string[]} */
   const urls = [];
-  // Skip header line (CLI batch does the same)
   for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const col0 = line.split(',')[0] ?? '';
-    const site = normalizeSite(col0);
+    const cols = splitCols(lines[i]);
+    const site = normalizeSite(cols[col] ?? '');
     if (site) urls.push(site);
   }
   return urls;
@@ -172,7 +179,7 @@ function createServer() {
 
   server.tool(
     'batch',
-    'Batch-evaluate pages via the gateway. Provide urls[] and/or a local CSV path (first column = domain/URL). Max 50 URLs per call.',
+    'Batch-evaluate pages via the gateway. Provide urls[] and/or a local CSV path (`Domain` column, else first column). Max 50 URLs per call.',
     {
       urls: z
         .array(z.string())
@@ -181,7 +188,7 @@ function createServer() {
       path: z
         .string()
         .optional()
-        .describe('Local CSV path; first column is domain/URL (header skipped)'),
+        .describe('Local CSV path; uses Domain (or url) column, else first column'),
       function: z
         .string()
         .optional()

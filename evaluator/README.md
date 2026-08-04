@@ -10,7 +10,7 @@ The browser work itself lives in the Nest stack (`libs/util/puppeteer`: Playwrig
 | --- | --- |
 | `evaluator` (no subcommand) | Interactive prompt until `quit` / `exit` / `q` / EOF |
 | `evaluator evaluate --url URL [--fn F] [--search S]` | One-shot evaluate → print body → exit |
-| `evaluator batch -p PATH …` | CSV batch via gateway (first column = domain) |
+| `evaluator batch -p PATH …` | CSV batch via gateway (`Domain` column / first column) |
 | `evaluator batch -p PATH … --legacy` | Same CSV, but each row runs `legacy/evaluate.js` locally |
 | `evaluator -p PATH …` | Same as `batch` (shorthand) |
 
