@@ -152,26 +152,24 @@ Then open http://localhost:4000/
 npm test
 ```
 
-# Rust CLI
+# Rust CLI (host — no Docker)
 
-Gateway HTTP client under `./evaluator`:
+Same shape as sibling ITC crates (`make build` / `make run` / `make install`):
+
+```shell
+make build              # → evaluator/target/debug/evaluator
+make install            # → ~/.cargo/bin/evaluator (on PATH)
+make run ARGS='batch -p archive/test.csv -f window.eval -n 1 --legacy'
+```
 
 | Mode | Command |
 | --- | --- |
-| Interactive | `cargo run` (prompt until `quit`) |
-| One-shot | `cargo run -- evaluate --url … [--fn …]` |
-| CSV batch | `cargo run -- batch -p file.csv …` (or shorthand `-p` without `batch`) |
-| Teaching sample | `cargo run -- batch -p file.csv … --legacy` → [`evaluator/legacy/`](evaluator/legacy/README.md) |
+| Interactive | `make run` or `evaluator` (prompt until `quit`) |
+| One-shot | `evaluator evaluate --url … [--fn …]` |
+| CSV batch (gateway) | `evaluator batch -p archive/test.csv -f window.eval -n 1` |
+| Teaching sample | `… --legacy` → local Puppeteer [`evaluator/legacy/`](evaluator/legacy/README.md) (needs `npm ci` + Chromium) |
 
-```shell
-cd ./evaluator
-cargo build
-# web on :4000
-cargo run -- evaluate --url https://example.com --fn window.eval
-cargo run -- batch -p archive/test.csv -f window.eval -n 1
-```
-
-Global: `--gateway` / `EVALUATOR_URL` (default `http://127.0.0.1:4000`). Batch: `-p`, `-f`, `-n`, `-s`, optional `--legacy`.
+`--legacy` does **not** need the gateway. Default batch/evaluate talk to `EVALUATOR_URL` / `--gateway` (default `http://127.0.0.1:4000`).
 
 See [evaluator/README.md](evaluator/README.md) for details.
 

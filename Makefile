@@ -1,4 +1,5 @@
 .PHONY: help \
+	build build-release check install clean run \
 	docker-build docker-build-fast docker-build-no-cache docker-build-dev \
 	docker-build-tools docker-build-tools-dev \
 	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
@@ -29,11 +30,28 @@ TOOLS_HUB_IMAGE ?= interchouette/evaluator-tools
 TOOLS_GHCR_PERSONAL ?= ghcr.io/groussac/evaluator-tools
 TOOLS_GHCR_ORG ?= ghcr.io/interchouette-itc/evaluator-tools
 
+# Host Rust CLI (./evaluator) — same shape as tvscreener-rs / kms
+unexport CARGO_TARGET_DIR
+CARGO_BIN ?= cargo
+CARGO = env -u CARGO_TARGET_DIR $(CARGO_BIN)
+CLI_MANIFEST ?= evaluator/Cargo.toml
+CLI_BIN ?= evaluator
+
 .DEFAULT_GOAL := help
 
 help:
 	@echo "evaluator targets"
 	@echo ""
+	@echo "Host CLI (no Docker):"
+	@echo "  make build             cargo build −> evaluator/target/debug/evaluator"
+	@echo "  make build-release     cargo build --release"
+	@echo "  make install           cargo install --path evaluator (puts evaluator on PATH)"
+	@echo "  make run ARGS='…'      cargo run -- …  (default: --help)"
+	@echo "                         e.g. make run ARGS='batch -p archive/test.csv -f window.eval -n 1 --legacy'"
+	@echo "  make check / clean"
+	@echo "  (--legacy needs: npm ci at repo root + Chromium / PUPPETEER_EXECUTABLE_PATH)"
+	@echo ""
+	@echo "Docker:"
 	@echo "  make docker-pull-dev       Pull Hub :dev (preferred local test)"
 	@echo "  make docker-run            Web :4000 + MCP HTTP :8788 (ENABLE_MCP=1)"
 	@echo "  make docker-run-detached   Same, detached"
@@ -48,6 +66,25 @@ help:
 	@echo "Images: $(HUB_IMAGE) | $(GHCR_ORG_IMAGE)"
 	@echo "Overrides: HUB_IMAGE=... APP_VERSION=... CI=0|1 TAG=... ARGS=..."
 
+# --- Host Rust CLI ---
+
+build:
+	$(CARGO) build --manifest-path $(CLI_MANIFEST)
+
+build-release:
+	$(CARGO) build --manifest-path $(CLI_MANIFEST) --release
+
+check:
+	$(CARGO) check --manifest-path $(CLI_MANIFEST)
+
+install:
+	$(CARGO) install --path evaluator --force
+
+clean:
+	$(CARGO) clean --manifest-path $(CLI_MANIFEST)
+
+run:
+	cd evaluator && $(CARGO) run -- $(if $(strip $(ARGS)),$(ARGS),--help)
 version-show:
 	@echo "package.json version: $(APP_VERSION)"
 	@echo "suggested tags: $(HUB_IMAGE):$(APP_VERSION) $(HUB_IMAGE):latest $(HUB_IMAGE):dev"
