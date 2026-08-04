@@ -9,5 +9,6 @@ async-std = { version = "1.12.0", features = ["attributes"] }
 clap = { version = "4.0.22", features = ["derive", "env"] }
 csv-async = "1.2.4"
 futures = "0.3.28"
+rustyline = "14"
 ureq = "2.9.7"
 urlencoding = "2.1.3"

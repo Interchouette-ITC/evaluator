@@ -6,6 +6,8 @@ use async_std::stream::StreamExt as AsyncStreamExt;
 use clap::{CommandFactory, Parser, Subcommand};
 use csv_async::AsyncReaderBuilder;
 use futures::stream::{self, StreamExt as FuturesStreamExt};
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 use std::collections::HashMap;
 use std::io::{self, Write};
 use urlencoding::encode;
@@ -78,7 +80,7 @@ struct BatchArgs {
     /// Function to evaluate
     #[arg(short = 'f', long = "function", default_value_t = String::from(""))]
     function: String,
-    /// Max concurrent evaluations
+    /// Max concurrent site evaluations (how many pages at once)
     #[arg(short = 'n', long = "nb_threads", default_value_t = 1)]
     nb_threads: u8,
     /// Navigation timeout (legacy script only; 0 → script default)
@@ -232,6 +234,7 @@ fn print_site_results(site: &str, results: &[String]) {
             println!("  {}", line);
         }
     }
+    println!();
 }
 
 fn domain_column_index<'a>(headers: impl Iterator<Item = &'a str>) -> usize {
@@ -394,6 +397,7 @@ Commands:
 
   batch -p CSV [-f F] [-n N] [-s S] [-t MS]
       CSV with Domain column (or first column).
+      -n / --nb_threads = max concurrent pages (default 1).
       Use session legacy, or pass --legacy (global) on the line / argv.
       -t/--timeout only applies with legacy.
 
@@ -416,12 +420,12 @@ fn print_interactive_banner(gateway: &str, legacy: bool) {
     if legacy {
         let _ = writeln!(
             stdout,
-            "evaluator interactive — LEGACY mode (local Puppeteer, no gateway)\n  tip: help | evaluate / batch use legacy | `gateway` to switch | quit"
+            "evaluator interactive — LEGACY mode (local Puppeteer, no gateway)\n  tip: help | ↑ history | evaluate / batch | `gateway` to switch | quit"
         );
     } else {
         let _ = writeln!(
             stdout,
-            "evaluator interactive — gateway mode\n  gateway: {gateway}\n  tip: help | evaluate / batch | `legacy` to switch | quit"
+            "evaluator interactive — gateway mode\n  gateway: {gateway}\n  tip: help | ↑ history | evaluate / batch | `legacy` to switch | quit"
         );
     }
     let _ = stdout.flush();
@@ -431,30 +435,41 @@ async fn run_interactive(gateway: String, mut session_legacy: bool) {
     let mut stdout = io::stdout();
     print_interactive_banner(&gateway, session_legacy);
 
+    let mut rl = match DefaultEditor::new() {
+        Ok(ed) => ed,
+        Err(e) => {
+            eprintln!("readline init failed: {e}");
+            return;
+        }
+    };
+    let history_path = dirs_history_path();
+    if let Some(ref path) = history_path {
+        let _ = rl.load_history(path);
+    }
+
     loop {
         let prompt = if session_legacy {
             "evaluator[legacy]> "
         } else {
             "evaluator> "
         };
-        let _ = write!(stdout, "{prompt}");
-        let _ = stdout.flush();
-        let mut line = String::new();
-        let n = match io::stdin().read_line(&mut line) {
-            Ok(n) => n,
+        let line = match rl.readline(prompt) {
+            Ok(l) => l,
+            Err(ReadlineError::Interrupted) => continue,
+            Err(ReadlineError::Eof) => {
+                let _ = writeln!(stdout);
+                break;
+            }
             Err(e) => {
                 eprintln!("stdin error: {e}");
                 break;
             }
         };
-        if n == 0 {
-            let _ = writeln!(stdout);
-            break;
-        }
         let trimmed = line.trim();
         if trimmed.is_empty() {
             continue;
         }
+        let _ = rl.add_history_entry(trimmed);
         let lower = trimmed.to_ascii_lowercase();
         if matches!(lower.as_str(), "quit" | "exit" | "q") {
             break;
@@ -524,9 +539,7 @@ async fn run_interactive(gateway: String, mut session_legacy: bool) {
                     run_command(&gw, use_legacy, command).await;
                 }
                 None => {
-                    eprintln!(
-                        "enter evaluate / batch, help, legacy, gateway, or quit"
-                    );
+                    eprintln!("enter evaluate / batch, help, legacy, gateway, or quit");
                 }
             },
             Err(err) => {
@@ -534,6 +547,15 @@ async fn run_interactive(gateway: String, mut session_legacy: bool) {
             }
         }
     }
+
+    if let Some(ref path) = history_path {
+        let _ = rl.save_history(path);
+    }
+}
+
+fn dirs_history_path() -> Option<std::path::PathBuf> {
+    let home = std::env::var_os("HOME")?;
+    Some(std::path::PathBuf::from(home).join(".evaluator_history"))
 }
 
 #[async_std::main]
