@@ -74,7 +74,7 @@ docker run -it --rm --network host \
 | `EVALUATOR_MCP_ADDR` | `0.0.0.0:8788` | MCP HTTP bind |
 | `PUPPETEER_EXECUTABLE_PATH` | `/usr/bin/chromium` | Chromium binary for both engines |
 
-AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` on stdio. MCP tool responses are capped at **300k** characters.
+AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` on stdio. MCP tools: `evaluate`, `list_functions`, `batch` (`urls[]` and/or CSV `path`, max 50). Responses capped at **300k** characters.
 
 ## Tags
 

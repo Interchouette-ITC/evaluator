@@ -3,6 +3,8 @@
  * Thin MCP for evaluator: proxies to EVALUATOR_URL (web gateway).
  *   node server.mjs              # stdio (default)
  *   node server.mjs --http       # Streamable HTTP on EVALUATOR_MCP_ADDR (:8788)
+ *
+ * Tools: evaluate, list_functions, batch (urls[] and/or CSV path).
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -10,6 +12,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import express from 'express';
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 
 const gateway = (process.env.EVALUATOR_URL || 'http://127.0.0.1:4000').replace(
@@ -21,6 +24,101 @@ const httpMode =
   process.env.EVALUATOR_MCP_HTTP === '1' ||
   process.env.EVALUATOR_MCP_HTTP === 'true';
 const listenAddr = process.env.EVALUATOR_MCP_ADDR || '0.0.0.0:8788';
+
+const BODY_CAP = 300_000;
+const BATCH_MAX_URLS = 50;
+const BATCH_MAX_CONCURRENCY = 8;
+
+/**
+ * @param {string} raw
+ * @returns {string | null}
+ */
+function normalizeSite(raw) {
+  const s = String(raw ?? '').trim().replace(/^["']|["']$/g, '');
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s)) return s;
+  if (s.includes('.') || s.startsWith('localhost') || s.startsWith('127.')) {
+    return `https://${s}`;
+  }
+  return null;
+}
+
+/**
+ * @param {string} path
+ * @returns {Promise<string[]>}
+ */
+async function loadCsvUrls(path) {
+  const text = await readFile(path, 'utf8');
+  const lines = text.split(/\r?\n/);
+  /** @type {string[]} */
+  const urls = [];
+  // Skip header line (CLI batch does the same)
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const col0 = line.split(',')[0] ?? '';
+    const site = normalizeSite(col0);
+    if (site) urls.push(site);
+  }
+  return urls;
+}
+
+/**
+ * @param {string} url
+ * @param {string | undefined} fn
+ * @returns {Promise<{ ok: boolean, status?: number, body?: string, error?: string }>}
+ */
+async function evaluateOnce(url, fn) {
+  const qs = new URLSearchParams({ url });
+  if (fn) qs.set('function', fn);
+  const target = `${gateway}/evaluate?${qs.toString()}`;
+  try {
+    const res = await fetch(target);
+    const body = await res.text();
+    if (!res.ok) {
+      return { ok: false, status: res.status, error: body.slice(0, 4000) };
+    }
+    return { ok: true, status: res.status, body };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * @template T
+ * @param {T[]} items
+ * @param {number} concurrency
+ * @param {(item: T, index: number) => Promise<unknown>} worker
+ */
+async function mapPool(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let next = 0;
+  const runners = Array.from(
+    { length: Math.min(concurrency, items.length) || 1 },
+    async () => {
+      while (true) {
+        const i = next++;
+        if (i >= items.length) break;
+        results[i] = await worker(items[i], i);
+      }
+    }
+  );
+  await Promise.all(runners);
+  return results;
+}
+
+/**
+ * @param {string} text
+ */
+function textResult(text, isError = false) {
+  return {
+    content: [{ type: 'text', text }],
+    ...(isError ? { isError: true } : {}),
+  };
+}
 
 function createServer() {
   const server = new McpServer({
@@ -39,37 +137,14 @@ function createServer() {
         .describe('Function expression to evaluate (e.g. window.eval)'),
     },
     async ({ url, function: fn }) => {
-      const qs = new URLSearchParams({ url });
-      if (fn) qs.set('function', fn);
-      const target = `${gateway}/evaluate?${qs.toString()}`;
-      try {
-        const res = await fetch(target);
-        const body = await res.text();
-        if (!res.ok) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `HTTP ${res.status}: ${body.slice(0, 4000)}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-        return {
-          content: [{ type: 'text', text: body.slice(0, 300_000) }],
-        };
-      } catch (err) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `evaluate failed: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
-        };
+      const result = await evaluateOnce(url, fn);
+      if (!result.ok) {
+        const detail = result.status
+          ? `HTTP ${result.status}: ${result.error ?? ''}`
+          : `evaluate failed: ${result.error ?? 'unknown'}`;
+        return textResult(detail, true);
       }
+      return textResult((result.body ?? '').slice(0, BODY_CAP));
     }
   );
 
@@ -83,30 +158,149 @@ function createServer() {
         const res = await fetch(target);
         const body = await res.text();
         if (!res.ok) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `HTTP ${res.status}: ${body.slice(0, 4000)}`,
-              },
-            ],
-            isError: true,
-          };
+          return textResult(`HTTP ${res.status}: ${body.slice(0, 4000)}`, true);
+        }
+        return textResult(body.slice(0, BODY_CAP));
+      } catch (err) {
+        return textResult(
+          `list_functions failed: ${err instanceof Error ? err.message : String(err)}`,
+          true
+        );
+      }
+    }
+  );
+
+  server.tool(
+    'batch',
+    'Batch-evaluate pages via the gateway. Provide urls[] and/or a local CSV path (first column = domain/URL). Max 50 URLs per call.',
+    {
+      urls: z
+        .array(z.string())
+        .optional()
+        .describe('Target page URLs (http/https or bare domains)'),
+      path: z
+        .string()
+        .optional()
+        .describe('Local CSV path; first column is domain/URL (header skipped)'),
+      function: z
+        .string()
+        .optional()
+        .describe('Function expression to evaluate (e.g. window.eval)'),
+      concurrency: z
+        .number()
+        .int()
+        .min(1)
+        .max(BATCH_MAX_CONCURRENCY)
+        .optional()
+        .describe(`Parallel evaluations (default 1, max ${BATCH_MAX_CONCURRENCY})`),
+    },
+    async ({ urls, path, function: fn, concurrency }) => {
+      if ((!urls || urls.length === 0) && !path) {
+        return textResult(
+          'batch requires at least one of: urls[] or path (CSV)',
+          true
+        );
+      }
+
+      /** @type {string[]} */
+      const collected = [];
+      if (urls?.length) {
+        for (const raw of urls) {
+          const site = normalizeSite(raw);
+          if (site) collected.push(site);
+        }
+      }
+      if (path) {
+        try {
+          const fromCsv = await loadCsvUrls(path);
+          collected.push(...fromCsv);
+        } catch (err) {
+          return textResult(
+            `batch CSV error (${path}): ${err instanceof Error ? err.message : String(err)}`,
+            true
+          );
+        }
+      }
+
+      const seen = new Set();
+      const sites = [];
+      for (const u of collected) {
+        if (seen.has(u)) continue;
+        seen.add(u);
+        sites.push(u);
+      }
+
+      if (sites.length === 0) {
+        return textResult('batch: no valid URLs after normalize', true);
+      }
+      if (sites.length > BATCH_MAX_URLS) {
+        return textResult(
+          `batch: ${sites.length} URLs exceeds max ${BATCH_MAX_URLS}; split the call`,
+          true
+        );
+      }
+
+      const conc = Math.min(
+        Math.max(concurrency ?? 1, 1),
+        BATCH_MAX_CONCURRENCY
+      );
+
+      const results = await mapPool(sites, conc, async (url) => {
+        const r = await evaluateOnce(url, fn);
+        if (r.ok) {
+          return { url, ok: true, status: r.status, body: r.body };
         }
         return {
-          content: [{ type: 'text', text: body.slice(0, 300_000) }],
+          url,
+          ok: false,
+          status: r.status,
+          error: r.error,
         };
-      } catch (err) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `list_functions failed: ${err instanceof Error ? err.message : String(err)}`,
-            },
-          ],
-          isError: true,
+      });
+
+      const okCount = results.filter((r) => r.ok).length;
+      const failCount = results.length - okCount;
+      const payload = {
+        count: results.length,
+        ok: okCount,
+        fail: failCount,
+        concurrency: conc,
+        results,
+      };
+      let text = JSON.stringify(payload);
+      if (text.length > BODY_CAP) {
+        // Drop bodies first to fit under cap
+        const slim = {
+          count: results.length,
+          ok: okCount,
+          fail: failCount,
+          concurrency: conc,
+          truncated: true,
+          results: results.map((r) =>
+            r.ok
+              ? {
+                  url: r.url,
+                  ok: true,
+                  status: r.status,
+                  body: (r.body ?? '').slice(0, 2000),
+                }
+              : r
+          ),
         };
+        text = JSON.stringify(slim);
+        if (text.length > BODY_CAP) {
+          text = JSON.stringify({
+            count: results.length,
+            ok: okCount,
+            fail: failCount,
+            truncated: true,
+            note: 'results omitted; response exceeded 300k; reduce batch size',
+            urls: sites,
+          });
+        }
       }
+
+      return textResult(text);
     }
   );
 
@@ -187,7 +381,9 @@ async function runHttp() {
     : ['0.0.0.0', listenAddr];
   const port = Number(portStr) || 8788;
   app.listen(port, host, () => {
-    console.error(`evaluator MCP HTTP on http://${host}:${port}/mcp (gateway=${gateway})`);
+    console.error(
+      `evaluator MCP HTTP on http://${host}:${port}/mcp (gateway=${gateway})`
+    );
   });
 }
 
