@@ -9,6 +9,9 @@ services:
     environment:
       - PORT=4000
       - ENABLE_MCP=1
+      - ENABLE_MCP_PROXY=1
+      - MCP_USER=mcp
+      - MCP_PWD=mcp
       - EVALUATOR_URL=http://127.0.0.1:4000
       - EVALUATOR_MCP_ADDR=0.0.0.0:8788
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium

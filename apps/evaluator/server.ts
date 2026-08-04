@@ -18,6 +18,43 @@ const auth = basicAuth({
   challenge: true,
 });
 
+const mcpUser = process.env['MCP_USER'] || 'mcp';
+const mcpPwd = process.env['MCP_PWD'] || 'mcp';
+const mcpAuth = basicAuth({
+  users: { [mcpUser]: mcpPwd },
+  challenge: true,
+});
+
+const enableMcpProxy = (() => {
+  const v = process.env['ENABLE_MCP_PROXY'];
+  if (v === undefined || v === '') return true;
+  return v === '1' || v === 'true';
+})();
+
+function proxyOnError(label: string) {
+  return (err: Error, _req: unknown, res: unknown) => {
+    console.error(`[${label}]`, err.message);
+    if (
+      res &&
+      typeof res === 'object' &&
+      'writeHead' in res &&
+      typeof (res as { writeHead: unknown }).writeHead === 'function' &&
+      'headersSent' in res &&
+      !(res as { headersSent: boolean }).headersSent
+    ) {
+      (res as http.ServerResponse).writeHead(502, {
+        'Content-Type': 'application/json',
+      });
+      (res as http.ServerResponse).end(
+        JSON.stringify({
+          error: `${label}_unavailable`,
+          detail: err.message,
+        })
+      );
+    }
+  };
+}
+
 const apiProxy = proxy({
   target: 'http://127.0.0.1:3333',
   changeOrigin: true,
@@ -26,23 +63,19 @@ const apiProxy = proxy({
   proxyTimeout: 30_000,
   timeout: 30_000,
   on: {
-    error(err, _req, res) {
-      console.error('[api-proxy]', err.message);
-      if (
-        res &&
-        'writeHead' in res &&
-        typeof res.writeHead === 'function' &&
-        !res.headersSent
-      ) {
-        res.writeHead(502, { 'Content-Type': 'application/json' });
-        res.end(
-          JSON.stringify({
-            error: 'api_upstream_unavailable',
-            detail: err.message,
-          })
-        );
-      }
-    },
+    error: proxyOnError('api-proxy'),
+  },
+});
+
+// Mounted at `/mcp`; HPM strips the prefix — restore `/mcp` for the sidecar.
+const mcpProxy = proxy({
+  target: 'http://127.0.0.1:8788',
+  changeOrigin: true,
+  pathRewrite: (path) => (path === '/' || path === '' ? '/mcp' : `/mcp${path}`),
+  proxyTimeout: 120_000,
+  timeout: 120_000,
+  on: {
+    error: proxyOnError('mcp-proxy'),
   },
 });
 
@@ -60,6 +93,10 @@ export function createApp(): express.Express {
   });
 
   app.use('/api', apiProxy);
+
+  if (enableMcpProxy) {
+    app.use('/mcp', mcpAuth, mcpProxy);
+  }
 
   app.use(express.static(distFolder, { maxAge: '1y', index: false }));
 

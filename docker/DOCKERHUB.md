@@ -13,7 +13,7 @@ docker run --rm -p 4000:4000 -p 8788:8788 interchouette/evaluator:dev
 
 Default: **web on :4000** + **MCP HTTP on :8788**. Opt out with `ENABLE_MCP=0`.
 
-Prefer **MCP HTTP** (`http://localhost:8788/mcp`) over stdio spawn: same evaluate path, no per-call Docker cold start.
+Prefer **MCP HTTP** (`http://localhost:8788/mcp` locally, or `https://mcp:mcp@host/mcp` via the web gateway). Stdio pays a Docker spawn cost on cold start.
 
 Open http://localhost:4000/ (or production [evaluator.interchouette.net](https://evaluator.interchouette.net))
 
@@ -69,12 +69,28 @@ docker run -it --rm --network host \
 | Env | Default | Meaning |
 | --- | --- | --- |
 | `ENABLE_MCP` | `1` | Start MCP HTTP beside web / interactive CLI (`0` = off) |
+| `ENABLE_MCP_PROXY` | `1` | Express proxies `/mcp` → sidecar `:8788` (basic auth) |
+| `MCP_USER` / `MCP_PWD` | `mcp` / `mcp` | Basic auth for gateway `/mcp` (not `DB_*`) |
 | `USE_PUPPETEER` | `0` | `1` / `true` → Puppeteer; else Playwright |
 | `EVALUATOR_URL` | `http://127.0.0.1:4000` | Gateway for CLI / MCP |
 | `EVALUATOR_MCP_ADDR` | `0.0.0.0:8788` | MCP HTTP bind |
 | `PUPPETEER_EXECUTABLE_PATH` | `/usr/bin/chromium` | Chromium binary for both engines |
 
-AI clients: Streamable HTTP at `http://localhost:8788/mcp`, or spawn `… mcp` on stdio. MCP tools: `evaluate`, `list_functions`, `batch` (`urls[]` and/or CSV `path`, max 50). Responses capped at **300k** characters.
+## MCP over HTTPS (Render / single public port)
+
+Platforms like Render expose only `PORT` (web). The sidecar still listens on `:8788` **inside** the container; it is **not** `https://host:8788/mcp`.
+
+Use the Express proxy instead:
+
+```text
+https://mcp:mcp@evaluator.interchouette.net/mcp
+```
+
+Boat defaults `MCP_USER`/`MCP_PWD` = `mcp`/`mcp` are **public by design** for the shared demo (401 without creds; README documents the pair). Override only for a **private** deploy and share creds out-of-band. Do not reuse `DB_USER`/`DB_PWD`.
+
+Render checklist: `EVALUATOR_URL=http://127.0.0.1:10000` (match platform `PORT`), `ENABLE_MCP=1`, leave `MCP_*` at defaults on the public demo.
+
+AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no auth) or `https://mcp:mcp@<host>/mcp` (proxied). Stdio: spawn `… mcp`. Tools: `evaluate`, `list_functions`, `batch`. Responses capped at **300k** characters.
 
 ## Tags
 

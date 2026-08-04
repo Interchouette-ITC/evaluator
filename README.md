@@ -178,11 +178,25 @@ See [evaluator/README.md](evaluator/README.md) for details.
 
 Thin server in [`tools/mcp`](tools/mcp): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path`; max 50 URLs) against `EVALUATOR_URL`. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
 
-**Prefer MCP HTTP** when the all-in-one container exposes `:8788` (Cursor: `evaluator-http` → `http://127.0.0.1:8788/mcp`). Stdio (`… mcp` / Cursor `evaluator`) works but pays a Docker spawn cost on cold start.
+**Prefer MCP HTTP** over stdio (stdio pays a Docker spawn cost on cold start).
+
+| Endpoint | Auth | When |
+| --- | --- | --- |
+| `http://127.0.0.1:8788/mcp` | none | Local sidecar (Docker `-p 8788:8788`) |
+| `http://mcp:mcp@127.0.0.1:4000/mcp` | basic `MCP_USER`/`MCP_PWD` (defaults `mcp`/`mcp`) | Via Express proxy on the web port |
+| `https://mcp:mcp@evaluator.interchouette.net/mcp` | same boat defaults | Public demo (Render: only web `PORT` is public; use `/mcp`, not `:8788`) |
+
+Defaults are public by design for the shared demo. Override `MCP_USER`/`MCP_PWD` only for a **private** deploy and share creds out-of-band — do not reuse `DB_*`. Set `ENABLE_MCP_PROXY=0` to disable the gateway route.
+
+Cursor HTTP example:
+
+```json
+{ "url": "https://mcp:mcp@evaluator.interchouette.net/mcp" }
+```
 
 ```shell
 cd tools/mcp && npm ci
-EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp (recommended)
+EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp (local sidecar)
 EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs           # stdio fallback
 ```
 
@@ -200,7 +214,7 @@ Same page and hook: `JSON.stringify` on `https://cursor.com`. Warmup discarded; 
 Takeaways:
 
 1. Prefer **Playwright** (default; unset or `USE_PUPPETEER=0`).
-2. Prefer **MCP HTTP** over stdio when `:8788` is up — same evaluate work, no spawn tax.
+2. Prefer **MCP HTTP** over stdio when available — same evaluate work, no spawn tax. Local `:8788` or proxied `https://mcp:mcp@host/mcp`.
 3. Hit counts and screenshots were comparable across engines (~75–84 console hits).
 
 # License
