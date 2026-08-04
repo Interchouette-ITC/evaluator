@@ -90,7 +90,7 @@ Boat defaults `MCP_USER`/`MCP_PWD` = `mcp`/`mcp` are **public by design** for th
 
 Render checklist: `EVALUATOR_URL=http://127.0.0.1:10000` (match platform `PORT`), `ENABLE_MCP=1`, leave `MCP_*` at defaults on the public demo.
 
-AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no auth) or `https://mcp:mcp@<host>/mcp` (proxied). Stdio: spawn `… mcp`. Tools: `evaluate`, `list_functions`, `batch`. Responses capped at **300k** characters.
+AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no auth) or `https://mcp:mcp@<host>/mcp` (proxied). Stdio: spawn `… mcp`. Tools: `evaluate`, `list_functions`, `batch`.
 
 ## Tags
 

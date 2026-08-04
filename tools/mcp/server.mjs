@@ -25,7 +25,6 @@ const httpMode =
   process.env.EVALUATOR_MCP_HTTP === 'true';
 const listenAddr = process.env.EVALUATOR_MCP_ADDR || '0.0.0.0:8788';
 
-const BODY_CAP = 300_000;
 const BATCH_MAX_URLS = 50;
 const BATCH_MAX_CONCURRENCY = 8;
 
@@ -151,7 +150,7 @@ function createServer() {
           : `evaluate failed: ${result.error ?? 'unknown'}`;
         return textResult(detail, true);
       }
-      return textResult((result.body ?? '').slice(0, BODY_CAP));
+      return textResult(result.body ?? '');
     }
   );
 
@@ -167,8 +166,7 @@ function createServer() {
         if (!res.ok) {
           return textResult(`HTTP ${res.status}: ${body.slice(0, 4000)}`, true);
         }
-        return textResult(body.slice(0, BODY_CAP));
-      } catch (err) {
+        return textResult(body);      } catch (err) {
         return textResult(
           `list_functions failed: ${err instanceof Error ? err.message : String(err)}`,
           true
@@ -274,40 +272,7 @@ function createServer() {
         concurrency: conc,
         results,
       };
-      let text = JSON.stringify(payload);
-      if (text.length > BODY_CAP) {
-        // Drop bodies first to fit under cap
-        const slim = {
-          count: results.length,
-          ok: okCount,
-          fail: failCount,
-          concurrency: conc,
-          truncated: true,
-          results: results.map((r) =>
-            r.ok
-              ? {
-                  url: r.url,
-                  ok: true,
-                  status: r.status,
-                  body: (r.body ?? '').slice(0, 2000),
-                }
-              : r
-          ),
-        };
-        text = JSON.stringify(slim);
-        if (text.length > BODY_CAP) {
-          text = JSON.stringify({
-            count: results.length,
-            ok: okCount,
-            fail: failCount,
-            truncated: true,
-            note: 'results omitted; response exceeded 300k; reduce batch size',
-            urls: sites,
-          });
-        }
-      }
-
-      return textResult(text);
+      return textResult(JSON.stringify(payload));
     }
   );
 
