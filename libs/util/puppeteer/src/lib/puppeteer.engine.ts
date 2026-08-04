@@ -44,7 +44,7 @@ export class PuppeteerEngine implements EvaluateSession {
     let aborted = false;
     let url = '';
     this.ws?.send(JSON.stringify('request'));
-    console.log(getHostname(message.url.trim()));
+    console.error(getHostname(message.url.trim()));
     page.on('request', (req) => {
       if (
         req.isNavigationRequest() &&
@@ -63,7 +63,7 @@ export class PuppeteerEngine implements EvaluateSession {
     this.ws?.send(JSON.stringify('set request interception'));
     await page.setRequestInterception(true);
     this.ws?.send(JSON.stringify('server message.url ' + message.url.trim()));
-    console.log('server message.url', message.url.trim());
+    console.error('server message.url', message.url.trim());
     let error = false;
     await page
       .goto(message.url.trim(), {
@@ -77,10 +77,10 @@ export class PuppeteerEngine implements EvaluateSession {
       });
     if (!aborted && !error) {
       this.ws?.send(JSON.stringify('server tries screenshot'));
-      console.log('server tries screenshot', message.url.trim());
+      console.error('server tries screenshot', message.url.trim());
       const base64 = (await page.screenshot({ encoding: 'base64' })) as string;
       this.ws?.send(JSON.stringify('screenshot done'));
-      console.log('server screenshot');
+      console.error('server screenshot');
       if (base64) {
         return JSON.stringify(`data:image/png;base64,${base64}`);
       }
@@ -91,7 +91,7 @@ export class PuppeteerEngine implements EvaluateSession {
   private async getNewPage(message: Message) {
     this.ws?.send(JSON.stringify('get new page'));
     const browser = await this.browser.catch((err) => {
-      console.log(err);
+      console.error(err);
       this.ws?.send(JSON.stringify('browser err ' + err.toString()));
     });
     if (!browser) {

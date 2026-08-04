@@ -43,26 +43,23 @@ docker run -d -p 4000:4000 -e ENABLE_MCP=0 "$IMAGE"
 # Web + Puppeteer engine + MCP
 docker run -d -p 4000:4000 -p 8788:8788 -e USE_PUPPETEER=1 "$IMAGE"
 
-# MCP stdio (gateway must be reachable; prefer HTTP when :8788 is up)
-docker run --rm -i --network host -e EVALUATOR_URL=http://127.0.0.1:4000 "$IMAGE" mcp
+# MCP stdio (Rust evaluator-mcp; no web required)
+docker run --rm -i --network host "$IMAGE" mcp
 
 # MCP HTTP only
-docker run --rm -p 8788:8788 -e EVALUATOR_URL=http://host.docker.internal:4000 "$IMAGE" mcp --http
+docker run --rm -p 8788:8788 "$IMAGE" mcp --http
 
-# One-shot evaluate
+# One-shot evaluate (spawns Node evaluate inside the image)
 docker run --rm --network host \
-  -e EVALUATOR_URL=http://127.0.0.1:4000 \
   "$IMAGE" evaluator evaluate --url https://example.com --fn window.eval
 
 # CSV batch
 docker run --rm --network host \
-  -e EVALUATOR_URL=http://127.0.0.1:4000 \
   -v "$PWD/evaluator:/data:ro" \
   "$IMAGE" evaluator batch -p /data/archive/test.csv -f window.eval -n 1
 
 # Interactive CLI (-it required)
 docker run -it --rm --network host \
-  -e EVALUATOR_URL=http://127.0.0.1:4000 \
   "$IMAGE" evaluator
 ```
 
@@ -72,8 +69,9 @@ docker run -it --rm --network host \
 | `ENABLE_MCP_PROXY` | `1` | Express proxies `/mcp` → sidecar `:8788` (basic auth) |
 | `MCP_USER` / `MCP_PWD` | `mcp` / `mcp` | Basic auth for gateway `/mcp` (not `DB_*`) |
 | `USE_PUPPETEER` | `0` | `1` / `true` → Puppeteer; else Playwright |
-| `EVALUATOR_URL` | `http://127.0.0.1:4000` | Gateway for CLI / MCP |
+| `EVALUATOR_NODE_ENTRY` | `/app/dist/evaluator/server/server.js` | Shared Node entry (serve/evaluate/batch) |
 | `EVALUATOR_MCP_ADDR` | `0.0.0.0:8788` | MCP HTTP bind |
+| `FUNCTIONS_PATH` | `/app/data/functions.json` | Catalog for `list_functions` |
 | `PUPPETEER_EXECUTABLE_PATH` | `/usr/bin/chromium` | Chromium binary for both engines |
 
 ## MCP over HTTPS (Render / single public port)
@@ -88,9 +86,9 @@ https://mcp:mcp@evaluator.interchouette.net/mcp
 
 Boat defaults `MCP_USER`/`MCP_PWD` = `mcp`/`mcp` are **public by design** for the shared demo (401 without creds; README documents the pair). Override only for a **private** deploy and share creds out-of-band. Do not reuse `DB_USER`/`DB_PWD`.
 
-Render checklist: `EVALUATOR_URL=http://127.0.0.1:10000` (match platform `PORT`), `ENABLE_MCP=1`, leave `MCP_*` at defaults on the public demo.
+Render checklist: `ENABLE_MCP=1`, leave `MCP_*` at defaults on the public demo.
 
-AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no auth) or `https://mcp:mcp@<host>/mcp` (proxied). Stdio: spawn `… mcp`. Tools: `evaluate`, `list_functions`, `batch`.
+AI clients: Streamable HTTP at `http://localhost:8788/mcp` (local sidecar, no auth) or `https://mcp:mcp@<host>/mcp` (proxied). Stdio: spawn `… mcp`. Tools: `evaluate`, `list_functions`, `batch` (Rust `evaluator-mcp` → Node evaluate/batch).
 
 ## Tags
 

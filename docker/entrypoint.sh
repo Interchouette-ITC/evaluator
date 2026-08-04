@@ -5,12 +5,12 @@
 set -eu
 
 ENABLE_MCP="${ENABLE_MCP:-1}"
-export EVALUATOR_URL="${EVALUATOR_URL:-http://127.0.0.1:4000}"
 export EVALUATOR_MCP_ADDR="${EVALUATOR_MCP_ADDR:-0.0.0.0:8788}"
+export EVALUATOR_NODE_ENTRY="${EVALUATOR_NODE_ENTRY:-/app/dist/evaluator/server/server.js}"
 
 mcp_http() {
-  echo "[entrypoint] MCP HTTP on ${EVALUATOR_MCP_ADDR} (gateway=${EVALUATOR_URL})" >&2
-  exec node /app/mcp/server.mjs --http
+  echo "[entrypoint] MCP HTTP on ${EVALUATOR_MCP_ADDR}" >&2
+  exec evaluator-mcp --http --listen "${EVALUATOR_MCP_ADDR}"
 }
 
 start_mcp_http_sidecar() {
@@ -25,14 +25,14 @@ start_mcp_http_sidecar() {
       sleep 0.5
     done
     echo "[entrypoint] starting MCP HTTP sidecar on ${EVALUATOR_MCP_ADDR}" >&2
-    exec node /app/mcp/server.mjs --http
+    exec evaluator-mcp --http --listen "${EVALUATOR_MCP_ADDR}"
   ) &
 }
 
 start_mcp_http_sidecar_nowait() {
   echo "[entrypoint] starting MCP HTTP sidecar on ${EVALUATOR_MCP_ADDR}" >&2
   (
-    exec node /app/mcp/server.mjs --http
+    exec evaluator-mcp --http --listen "${EVALUATOR_MCP_ADDR}"
   ) &
 }
 
@@ -52,15 +52,6 @@ cli_is_long_lived() {
     --path=*|-p*)
       return 1
       ;;
-    --gateway)
-      shift
-      # consume optional value
-      if [ "$#" -gt 0 ] && [ "${1#-}" = "$1" ]; then
-        shift
-      fi
-      cli_is_long_lived "$@"
-      return $?
-      ;;
     *)
       return 1
       ;;
@@ -70,7 +61,7 @@ cli_is_long_lived() {
 run_cli() {
   if cli_is_long_lived "$@"; then
     if mcp_enabled; then
-      echo "[entrypoint] interactive CLI (gateway=${EVALUATOR_URL})" >&2
+      echo "[entrypoint] interactive CLI" >&2
       start_mcp_http_sidecar_nowait
     else
       echo "[entrypoint] interactive CLI (ENABLE_MCP=0)" >&2
@@ -104,13 +95,13 @@ case "$cmd" in
     if [ "${EVALUATOR_MCP_HTTP:-}" = "1" ] || [ "${EVALUATOR_MCP_HTTP:-}" = "true" ]; then
       mcp_http
     fi
-    echo "[entrypoint] MCP stdio (EVALUATOR_URL=${EVALUATOR_URL})" >&2
-    exec node /app/mcp/server.mjs "$@"
+    echo "[entrypoint] MCP stdio" >&2
+    exec evaluator-mcp "$@"
     ;;
   cli | evaluator)
     run_cli "$@"
     ;;
-  evaluate | batch | -p | --path | --help | -h | --gateway)
+  evaluate | batch | -p | --path | --help | -h)
     run_cli "$cmd" "$@"
     ;;
   *)

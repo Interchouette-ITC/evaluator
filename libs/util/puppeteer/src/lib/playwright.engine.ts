@@ -44,7 +44,7 @@ export class PlaywrightEngine implements EvaluateSession {
     let aborted = false;
     let url = '';
     this.ws?.send(JSON.stringify('request'));
-    console.log(getHostname(message.url.trim()));
+    console.error(getHostname(message.url.trim()));
     const hostname = getHostname(message.url.trim());
     await page.route('**/*', async (route) => {
       const req = route.request();
@@ -64,7 +64,7 @@ export class PlaywrightEngine implements EvaluateSession {
     });
     this.ws?.send(JSON.stringify('set request interception'));
     this.ws?.send(JSON.stringify('server message.url ' + message.url.trim()));
-    console.log('server message.url', message.url.trim());
+    console.error('server message.url', message.url.trim());
     let error = false;
     await page
       .goto(message.url.trim(), {
@@ -78,11 +78,11 @@ export class PlaywrightEngine implements EvaluateSession {
       });
     if (!aborted && !error) {
       this.ws?.send(JSON.stringify('server tries screenshot'));
-      console.log('server tries screenshot', message.url.trim());
+      console.error('server tries screenshot', message.url.trim());
       const buffer = await page.screenshot({ type: 'png' });
       const base64 = buffer.toString('base64');
       this.ws?.send(JSON.stringify('screenshot done'));
-      console.log('server screenshot');
+      console.error('server screenshot');
       if (base64) {
         return JSON.stringify(`data:image/png;base64,${base64}`);
       }
@@ -93,7 +93,7 @@ export class PlaywrightEngine implements EvaluateSession {
   private async getNewPage(message: Message) {
     this.ws?.send(JSON.stringify('get new page'));
     const browser = await this.browser.catch((err: Error) => {
-      console.log(err);
+      console.error(err);
       this.ws?.send(JSON.stringify('browser err ' + err.toString()));
     });
     if (!browser) {

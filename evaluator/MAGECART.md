@@ -48,7 +48,7 @@ compromised page → obfuscated JS → window.eval(cleartext) → evaluator hook
 ### Canary = W3Schools (hook smoke test)
 
 ```bash
-evaluator --legacy evaluate \
+evaluator evaluate \
   --url 'https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval' \
   --fn window.eval
 # expect a payload like: x * y
@@ -68,9 +68,9 @@ cd evaluator/archive/fixtures && python3 -m http.server 8765
 ```
 
 ```bash
-evaluator --legacy evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval -s checkout,cart --excerpt
-evaluator --legacy evaluate --url http://127.0.0.1:8765/demo2grelos.html --fn window.eval -s grelos_v --excerpt
-evaluator --legacy evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval -s grelos_v --excerpt
+evaluator evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval -s checkout,cart --excerpt
+evaluator evaluate --url http://127.0.0.1:8765/demo2grelos.html --fn window.eval -s grelos_v --excerpt
+evaluator evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval -s grelos_v --excerpt
 ```
 
 See [`archive/fixtures/README.md`](./archive/fixtures/README.md) and [`archive/fixtures/DEOBFUSCATED.md`](./archive/fixtures/DEOBFUSCATED.md).
@@ -78,12 +78,12 @@ See [`archive/fixtures/README.md`](./archive/fixtures/README.md) and [`archive/f
 ### Batch
 
 ```bash
-evaluator batch -p evaluator/archive/test.csv -f window.eval -n 1 --legacy
+evaluator batch -p evaluator/archive/test.csv -f window.eval -n 1
 ```
 
 ```bash
 evaluator batch -p evaluator/archive/All-Live-Magento-Sites.csv \
-  -f window.eval -n 2 -t 10000 --legacy \
+  -f window.eval -n 2 \
   --rules evaluator/rules/frontend.txt
 ```
 

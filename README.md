@@ -20,8 +20,8 @@ compromised / demo page
 | You get | It solves |
 | --- | --- |
 | Live **web UI** + screenshot stream | “What did this page actually `eval`?” |
-| **Rust CLI** (gateway or `--legacy`) | Batch / interactive hunts without guessing at packed source |
-| **MCP** tools for agents | Same evaluate path from Cursor / automation |
+| **Rust CLI** (spawns Node evaluate/batch) | Batch / interactive hunts without guessing at packed source |
+| **Rust MCP** tools for agents | Same evaluate path from Cursor / automation |
 | Local **demo fixtures** + Willem rules | Reproduce the VB2021 story on localhost before you touch live shops |
 
 **Live:** [https://evaluator.interchouette.net](https://evaluator.interchouette.net)
@@ -59,7 +59,7 @@ Full product notes (warnings, canary vs demos, batch): **[`evaluator/MAGECART.md
 **Canary** (hook smoke test — W3Schools `eval`):
 
 ```bash
-evaluator --legacy evaluate \
+evaluator evaluate \
   --url 'https://www.w3schools.com/jsref/tryit.asp?filename=tryjsref_eval' \
   --fn window.eval
 # expect a payload like: x * y
@@ -89,16 +89,16 @@ cd evaluator/archive/fixtures && python3 -m http.server 8765
 ```
 
 ```bash
-evaluator --legacy evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval -s checkout,cart --excerpt
-evaluator --legacy evaluate --url http://127.0.0.1:8765/demo2grelos.html --fn window.eval -s grelos_v --excerpt
-evaluator --legacy evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval -s grelos_v --excerpt
+evaluator evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval -s checkout,cart --excerpt
+evaluator evaluate --url http://127.0.0.1:8765/demo2grelos.html --fn window.eval -s grelos_v --excerpt
+evaluator evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval -s grelos_v --excerpt
 ```
 
 Filter live/batch hits with keywords, regex, or Willem’s rules:
 
 ```bash
 evaluator batch -p evaluator/archive/All-Live-Magento-Sites.csv \
-  -f window.eval -n 2 -t 10000 --legacy \
+  -f window.eval -n 1 \
   --rules evaluator/rules/frontend.txt
 ```
 
@@ -111,17 +111,26 @@ evaluator batch -p evaluator/archive/All-Live-Magento-Sites.csv \
 
 ```text
 Browser (Angular SPA)
-    → Express gateway :4000  (static, WS evaluate, GET /evaluate)
+    → Node serve :4000  (Express: static, WS evaluate, GET /evaluate)
         → Nest API :3333     (/api/functions)
-        → Chromium via Playwright (default) or Puppeteer (`USE_PUPPETEER=1`)
+        → Chromium via libs/util/puppeteer
 
-Same image also ships Rust CLI + MCP (prefer HTTP :8788; stdio optional)
-    → HTTP to EVALUATOR_URL  (same /evaluate and /api/functions)
+Rust CLI / Rust MCP
+    → spawn Node evaluate | batch  (same entry as serve; no :4000 required)
 ```
 
-Image: `interchouette/evaluator` — web + Chromium + Rust CLI + MCP.
+Image: `interchouette/evaluator` — web + Chromium + Rust CLI + Rust MCP.
 
 Compose profile: `web` (ports `4000` + `8788`).
+
+| Mode | Behavior |
+| --- | --- |
+| `web` / default | Nest + Node `serve` `:4000`; MCP HTTP sidecar if `ENABLE_MCP=1` |
+| `ENABLE_MCP=0` | Web only |
+| `mcp` | `evaluator-mcp` stdio |
+| `mcp --http` | MCP HTTP only |
+| `evaluator` / interactive | Rust prompt; spawn Node evaluate/batch |
+| `evaluate` / `batch` | Rust → one Node child; no MCP sidecar |
 
 How the pieces fit the hunt:
 
@@ -184,17 +193,17 @@ Visit http://localhost:4000/
 make docker-build-dev   # or make docker-build
 ```
 
-Optional local packaging after `npm run build`: `make docker-build-fast`.
+Optional local packaging after `npm run build`: `make docker-build`.
 
-CLI / MCP (against a running gateway, or built into the all-in-one image):
+CLI / MCP (built into the all-in-one image; CLI does **not** need web up):
 
 ```shell
 # One-shot evaluate
 make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'
 # CSV batch
 make docker-run-cli ARGS='batch -p /data/archive/test.csv -n 1 -f window.eval'
-# Interactive: docker run -it --rm --network host -e EVALUATOR_URL=http://127.0.0.1:4000 interchouette/evaluator:dev evaluator
-make docker-run-mcp          # stdio
+# Interactive: docker run -it --rm --network host interchouette/evaluator:dev evaluator
+make docker-run-mcp          # stdio (evaluator-mcp)
 # MCP HTTP is published on :8788 with make docker-run (ENABLE_MCP=1)
 ```
 
@@ -262,20 +271,18 @@ npm test
 Same shape as sibling ITC crates (`make build` / `make run` / `make install`):
 
 ```shell
-make build              # → evaluator/target/debug/evaluator
-make install            # → ~/.cargo/bin/evaluator (on PATH)
-make run ARGS='batch -p archive/test.csv -f window.eval -n 1 --legacy'
+make build              # → evaluator/target/debug/evaluator (+ evaluator-mcp)
+make install            # → ~/.cargo/bin (features apps)
+make run ARGS='evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval'
 ```
+
+Needs `npm run build` (Node entry at `dist/evaluator/server/server.js`) + Chromium.
 
 | Mode | Command |
 | --- | --- |
-| Interactive (gateway) | `make run` or `evaluator` |
-| Interactive (legacy) | `evaluator --legacy` (prompt `evaluator[legacy]>`; type `gateway` / `legacy` to switch) |
+| Interactive | `make run` or `evaluator` |
 | One-shot | `evaluator evaluate --url … [--fn …]` |
-| CSV batch (gateway) | `evaluator batch -p archive/test.csv -f window.eval -n 1` |
-| Teaching sample | `evaluator --legacy` / `… --legacy` → local Puppeteer [`evaluator/legacy/`](evaluator/legacy/README.md) (needs `npm ci` + Chromium) |
-
-`--legacy` does **not** need the gateway. Default batch/evaluate talk to `EVALUATOR_URL` / `--gateway` (default `http://127.0.0.1:4000`).
+| CSV batch | `evaluator batch -p archive/test.csv -f window.eval -n 1` |
 
 See [evaluator/README.md](evaluator/README.md) for details.
 
@@ -284,7 +291,7 @@ See [evaluator/README.md](evaluator/README.md) for details.
 <details open>
 <summary><strong>MCP</strong> — agent tools + engine advice</summary>
 
-Thin server in [`tools/mcp`](tools/mcp): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path` with a `Domain` column; max 50 URLs) against `EVALUATOR_URL`. Optional `body_cap` truncates response bodies when set. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
+Rust MCP (`evaluator-mcp`, mcpkit): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path` with a `Domain` column; max 50 URLs). Tools spawn the shared Node entry — **no** `:4000` required. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
 
 **Prefer MCP HTTP** over stdio (stdio pays a Docker spawn cost on cold start).
 
@@ -303,9 +310,9 @@ Cursor HTTP example:
 ```
 
 ```shell
-cd tools/mcp && npm ci
-EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs --http    # :8788/mcp (local sidecar)
-EVALUATOR_URL=http://127.0.0.1:4000 node server.mjs           # stdio fallback
+make run-mcp-http          # host: evaluator-mcp --http (:8788)
+make run-mcp               # host: stdio
+make docker-run-mcp        # image stdio
 ```
 
 ### Engine and MCP advice (local bench)

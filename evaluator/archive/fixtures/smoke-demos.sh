@@ -44,7 +44,7 @@ need_evaluator
 ensure_server
 
 echo "== demo1shop (expect checkout and/or cart; not grelos_v) =="
-OUT_SHOP="$(evaluator --legacy evaluate \
+OUT_SHOP="$(evaluator evaluate \
   --url "${BASE}/demo1shop.html" \
   --fn window.eval \
   -s checkout,onepage,cart,grelos_v \
@@ -60,7 +60,7 @@ if echo "$OUT_SHOP" | grep -q 'match: keyword:grelos_v'; then
 fi
 
 echo "== demo2grelos (expect grelos_v) =="
-OUT_G="$(evaluator --legacy evaluate \
+OUT_G="$(evaluator evaluate \
   --url "${BASE}/demo2grelos.html" \
   --fn window.eval \
   -s grelos_v \
@@ -72,7 +72,7 @@ echo "$OUT_G" | grep -q 'match: keyword:grelos_v' || {
 }
 
 echo "== demo3grelos (expect grelos_v; hex-table packer) =="
-OUT_G3="$(evaluator --legacy evaluate \
+OUT_G3="$(evaluator evaluate \
   --url "${BASE}/demo3grelos.html" \
   --fn window.eval \
   -s grelos_v \

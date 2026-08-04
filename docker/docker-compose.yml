@@ -12,8 +12,8 @@ services:
       - ENABLE_MCP_PROXY=1
       - MCP_USER=mcp
       - MCP_PWD=mcp
-      - EVALUATOR_URL=http://127.0.0.1:4000
       - EVALUATOR_MCP_ADDR=0.0.0.0:8788
+      - EVALUATOR_NODE_ENTRY=/app/dist/evaluator/server/server.js
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
       - USE_PUPPETEER=0
@@ -28,5 +28,5 @@ volumes:
 
 # All-in-one: web :4000 + MCP HTTP :8788 (ENABLE_MCP=0 for web only)
 # make docker-pull-dev && make docker-run
-# CLI:  docker compose … run --rm evaluator evaluator -p /data/archive/test.csv -n 1
-# stdio: docker run -i --rm --network host -e EVALUATOR_URL=http://127.0.0.1:4000 interchouette/evaluator:dev mcp
+# CLI:  docker compose … run --rm evaluator evaluator batch -p /data/archive/test.csv -n 1
+# stdio: docker run -i --rm --network host interchouette/evaluator:dev mcp

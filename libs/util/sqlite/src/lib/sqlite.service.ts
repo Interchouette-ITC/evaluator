@@ -33,7 +33,7 @@ export class SqliteService {
   }
 
   async insert(message: Message) {
-    console.log('insert', message.url);
+    console.error('insert', message.url);
     try {
       await this.open();
     } catch (error) {

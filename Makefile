@@ -1,6 +1,6 @@
 .PHONY: help \
-	build build-release check install clean run \
-	docker-build docker-build-fast docker-build-no-cache docker-build-dev \
+	build build-release check check-lib install clean run run-mcp run-mcp-http \
+	docker-build docker-build-no-cache docker-build-dev \
 	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
 	docker-push-release-ghcr-personal docker-push-release-ghcr-itc \
@@ -17,15 +17,15 @@ GHCR_ORG_IMAGE ?= ghcr.io/interchouette-itc/evaluator
 TAG ?= latest
 APP_VERSION ?= $(shell node -p "require('./package.json').version")
 DOCKERFILE ?= docker/Dockerfile
-DOCKERFILE_RUNTIME ?= docker/Dockerfile.runtime
 DOCKER_BUILDKIT ?= 1
 CI ?= 0
 COMPOSE_PROD ?= docker/docker-compose.yml
 
-# Host Rust CLI (./evaluator) — same shape as tvscreener-rs / kms
+# Host Rust CLI / MCP — same shape as tvscreener-rs
 unexport CARGO_TARGET_DIR
 CARGO_BIN ?= cargo
 CARGO = env -u CARGO_TARGET_DIR $(CARGO_BIN)
+CARGO_FLAGS ?= --features apps
 CLI_MANIFEST ?= evaluator/Cargo.toml
 CLI_BIN ?= evaluator
 
@@ -34,14 +34,16 @@ CLI_BIN ?= evaluator
 help:
 	@echo "evaluator targets"
 	@echo ""
-	@echo "Host CLI (no Docker):"
-	@echo "  make build             cargo build −> evaluator/target/debug/evaluator"
-	@echo "  make build-release     cargo build --release"
-	@echo "  make install           cargo install --path evaluator (puts evaluator on PATH)"
-	@echo "  make run ARGS='…'      cargo run -- …  (default: --help)"
-	@echo "                         e.g. make run ARGS='batch -p archive/test.csv -f window.eval -n 1 --legacy'"
-	@echo "  make check / clean"
-	@echo "  (--legacy needs: npm ci at repo root + Chromium / PUPPETEER_EXECUTABLE_PATH)"
+	@echo "Host CLI / MCP (no Docker):"
+	@echo "  make build             cargo build $(CARGO_FLAGS) → evaluator + evaluator-mcp"
+	@echo "  make build-release     cargo build --release $(CARGO_FLAGS)"
+	@echo "  make check / check-lib cargo check (apps) / lean lib"
+	@echo "  make install           cargo install --path evaluator --features apps"
+	@echo "  make run ARGS='…'      cargo run --bin evaluator --features apps -- …"
+	@echo "                         e.g. make run ARGS='evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval'"
+	@echo "  make run-mcp           cargo run --bin evaluator-mcp (stdio)"
+	@echo "  make run-mcp-http      cargo run --bin evaluator-mcp -- --http"
+	@echo "  (needs: npm run build + Chromium / PUPPETEER_EXECUTABLE_PATH)"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-pull-dev       Pull Hub :dev (preferred local test)"
@@ -49,34 +51,43 @@ help:
 	@echo "  make docker-run-detached   Same, detached"
 	@echo "  make docker-build-dev      All-in-one build + :dev + :latest tags (CI)"
 	@echo "  make docker-build          All-in-one :$(TAG) + :$(APP_VERSION)"
-	@echo "  make docker-build-fast     Optional: host npm run build + package (web-only)"
-	@echo "  make docker-run-cli        ARGS='-p /data/archive/test.csv -n 1' (needs gateway up)"
-	@echo "  make docker-run-mcp        MCP stdio against local :4000"
+	@echo "  make docker-run-cli        ARGS='evaluate --url …' or 'batch -p /data/…'"
+	@echo "  make docker-run-mcp        MCP stdio (Rust evaluator-mcp)"
 	@echo "  make docker-stop"
 	@echo "  make version-show"
 	@echo ""
 	@echo "Images: $(HUB_IMAGE) | $(GHCR_ORG_IMAGE)"
 	@echo "Overrides: HUB_IMAGE=... APP_VERSION=... CI=0|1 TAG=... ARGS=..."
 
-# --- Host Rust CLI ---
+# --- Host Rust CLI / MCP ---
 
 build:
-	$(CARGO) build --manifest-path $(CLI_MANIFEST)
+	$(CARGO) build --manifest-path $(CLI_MANIFEST) $(CARGO_FLAGS)
 
 build-release:
-	$(CARGO) build --manifest-path $(CLI_MANIFEST) --release
+	$(CARGO) build --manifest-path $(CLI_MANIFEST) --release $(CARGO_FLAGS)
 
 check:
-	$(CARGO) check --manifest-path $(CLI_MANIFEST)
+	$(CARGO) check --manifest-path $(CLI_MANIFEST) --all-targets $(CARGO_FLAGS)
+
+check-lib:
+	$(CARGO) check --manifest-path $(CLI_MANIFEST) --lib
 
 install:
-	$(CARGO) install --path evaluator --force
+	$(CARGO) install --path evaluator --force --features apps
 
 clean:
 	$(CARGO) clean --manifest-path $(CLI_MANIFEST)
 
 run:
-	cd evaluator && $(CARGO) run -- $(if $(strip $(ARGS)),$(ARGS),--help)
+	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin $(CLI_BIN) -- $(if $(strip $(ARGS)),$(ARGS),--help)
+
+run-mcp:
+	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- $(ARGS)
+
+run-mcp-http:
+	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- --http $(ARGS)
+
 version-show:
 	@echo "package.json version: $(APP_VERSION)"
 	@echo "suggested tags: $(HUB_IMAGE):$(APP_VERSION) $(HUB_IMAGE):latest $(HUB_IMAGE):dev"
@@ -88,22 +99,6 @@ docker-build:
 		-t $(HUB_IMAGE):$(APP_VERSION) \
 		-f $(DOCKERFILE) \
 		.
-
-docker-build-fast:
-	@test -d dist/evaluator/browser -a -f dist/evaluator/server/server.js -a -f dist/apps/evaluator-backend/main.js \
-		|| { echo "Missing dist — run: npm run build"; exit 1; }
-	@rm -rf .docker-fast-context
-	@mkdir -p .docker-fast-context/docker
-	@cp package.json package-lock.json .docker-fast-context/
-	@cp -a dist .docker-fast-context/
-	@cp docker/serve.mjs .docker-fast-context/docker/serve.mjs
-	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build \
-		-t $(APP_NAME):$(TAG) \
-		-t $(HUB_IMAGE):$(TAG) \
-		-t $(HUB_IMAGE):$(APP_VERSION) \
-		-f $(DOCKERFILE_RUNTIME) \
-		.docker-fast-context
-	@rm -rf .docker-fast-context
 
 docker-build-no-cache:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --pull --no-cache \
@@ -196,18 +191,16 @@ docker-run-dev:
 
 docker-run-cli:
 	docker run --rm --network host \
-		-e EVALUATOR_URL=http://127.0.0.1:4000 \
 		-v $(CURDIR)/evaluator:/data:ro \
 		$(HUB_IMAGE):dev evaluator $(ARGS)
 
 docker-run-mcp:
 	docker run --rm -i --network host \
-		-e EVALUATOR_URL=http://127.0.0.1:4000 \
 		$(HUB_IMAGE):dev mcp
 
 docker-run-mcp-http:
 	@echo "MCP HTTP is published on :8788 when ENABLE_MCP=1 (default with make docker-run)"
-	@echo "Or: docker run --rm -p 8788:8788 -e EVALUATOR_URL=http://host.docker.internal:4000 $(HUB_IMAGE):dev mcp --http"
+	@echo "Or: docker run --rm -p 8788:8788 $(HUB_IMAGE):dev mcp --http"
 
 docker-stop:
 	docker compose -f $(COMPOSE_PROD) --profile web down --remove-orphans

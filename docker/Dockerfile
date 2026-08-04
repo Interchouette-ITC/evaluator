@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 
-# All-in-one: web (Chromium) + Rust CLI + MCP (stdio / HTTP).
+# All-in-one: web (Chromium) + Rust CLI + Rust MCP (stdio / HTTP).
 # Default: web :4000 + MCP HTTP :8788. ENABLE_MCP=0 → web only.
 #   docker run … mcp              # stdio
 #   docker run … mcp --http       # HTTP only
-#   docker run … evaluator -p …   # Rust CLI
+#   docker run … evaluator -p …   # Rust CLI → Node evaluate/batch
 
 ARG NODE_IMAGE=node:26-trixie-slim
 ARG RUST_IMAGE=rust:1.88-bookworm
@@ -12,13 +12,7 @@ ARG RUST_IMAGE=rust:1.88-bookworm
 FROM ${RUST_IMAGE} AS rust-builder
 WORKDIR /src
 COPY evaluator/ ./
-RUN cargo build --release
-
-FROM ${NODE_IMAGE} AS mcp-deps
-WORKDIR /mcp
-COPY tools/mcp/package.json tools/mcp/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --omit=dev
+RUN cargo build --release --features apps --bin evaluator --bin evaluator-mcp
 
 FROM ${NODE_IMAGE} AS builder
 WORKDIR /app
@@ -69,18 +63,17 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     SQLITE_PATH=/app/data/database.db \
     FUNCTIONS_PATH=/app/data/functions.json \
     ENABLE_MCP=1 \
-    EVALUATOR_URL=http://127.0.0.1:4000 \
-    EVALUATOR_MCP_ADDR=0.0.0.0:8788
+    EVALUATOR_MCP_ADDR=0.0.0.0:8788 \
+    EVALUATOR_NODE_ENTRY=/app/dist/evaluator/server/server.js
 
 COPY --from=builder --chown=app:app /app/package.json /app/package-lock.json ./
 COPY --from=builder --chown=app:app /app/node_modules ./node_modules
 COPY --from=builder --chown=app:app /app/dist ./dist
 COPY --from=rust-builder /src/target/release/evaluator /usr/local/bin/evaluator
-COPY --from=mcp-deps /mcp/node_modules /app/mcp/node_modules
-COPY --chown=app:app tools/mcp/package.json tools/mcp/server.mjs /app/mcp/
+COPY --from=rust-builder /src/target/release/evaluator-mcp /usr/local/bin/evaluator-mcp
 COPY --chown=app:app docker/serve.mjs ./docker/serve.mjs
 COPY --chown=app:app docker/entrypoint.sh ./docker/entrypoint.sh
-RUN chmod +x /app/docker/entrypoint.sh /usr/local/bin/evaluator
+RUN chmod +x /app/docker/entrypoint.sh /usr/local/bin/evaluator /usr/local/bin/evaluator-mcp
 
 USER app
 EXPOSE 4000 8788
