@@ -3,7 +3,7 @@
 # Legacy Chromium-free CLI + MCP. Prefer the all-in-one docker/Dockerfile.
 # Evaluate still needs a gateway (EVALUATOR_URL). Local only: make docker-build-tools
 
-ARG RUST_IMAGE=rust:1.86-bookworm
+ARG RUST_IMAGE=rust:1.88-bookworm
 ARG NODE_IMAGE=node:26-trixie-slim
 
 FROM ${RUST_IMAGE} AS rust-builder
