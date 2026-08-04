@@ -1,20 +1,20 @@
 use async_process::{Child, ChildStdout, Command, Stdio};
 use async_std::fs::File;
-use async_std::io::prelude::{BufReadExt, SeekExt};
-use async_std::io::{BufReader, ReadExt};
+use async_std::io::prelude::BufReadExt;
+use async_std::io::BufReader;
 use async_std::stream::StreamExt as AsyncStreamExt;
 use clap::{CommandFactory, Parser, Subcommand};
 use csv_async::AsyncReaderBuilder;
 use futures::stream::{self, StreamExt as FuturesStreamExt};
 use std::collections::HashMap;
-use std::io::{self, SeekFrom, Write};
+use std::io::{self, Write};
 use urlencoding::encode;
 
 #[derive(Parser, Debug)]
 #[command(
     name = "evaluator",
     about = "Evaluate JS on pages via the evaluator web gateway",
-    after_help = "With no subcommand, starts an interactive prompt (type quit or exit to leave).\nLegacy: leading -p/--path without a subcommand is treated as `batch`.",
+    after_help = "With no subcommand, starts an interactive prompt (type quit or exit to leave).\nShorthand: leading -p/--path without a subcommand is treated as `batch`.",
     subcommand_required = false,
     arg_required_else_help = false
 )]
@@ -95,12 +95,7 @@ impl BatchRunner {
     }
 
     async fn run_http(&mut self) {
-        let mut file = File::open(&self.args.path).await.expect("open CSV");
-        let pos: u64 = {
-            let mut reader = BufReader::new(file.by_ref());
-            reader.read_until(b'\n', &mut Vec::new()).await.unwrap() as u64
-        };
-        let _ = file.seek(SeekFrom::Start(pos)).await;
+        let file = File::open(&self.args.path).await.expect("open CSV");
         let reader = AsyncReaderBuilder::new()
             .delimiter(b',')
             .has_headers(true)
@@ -143,12 +138,7 @@ impl BatchRunner {
         eprintln!(
             "legacy mode: local Node script (see evaluator/legacy/README.md); HTTP gateway is the default path"
         );
-        let mut file = File::open(&self.args.path).await.unwrap();
-        let pos: u64 = {
-            let mut reader = BufReader::new(file.by_ref());
-            reader.read_until(b'\n', &mut Vec::new()).await.unwrap() as u64
-        };
-        let _ = file.seek(SeekFrom::Start(pos)).await;
+        let file = File::open(&self.args.path).await.unwrap();
         let reader = AsyncReaderBuilder::new()
             .delimiter(b',')
             .has_headers(true)
