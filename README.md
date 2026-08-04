@@ -104,8 +104,10 @@ make docker-run-mcp          # stdio
 | Workflow | Trigger | What |
 | --- | --- | --- |
 | `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
-| `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR |
-| `release.yml` | GitHub Release `vX.Y.Z` | `:X.Y.Z` + `:latest` |
+| `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR; then Render via `RENDER_DEPLOY_HOOK` |
+| `release.yml` | GitHub Release `vX.Y.Z` | `:X.Y.Z` + `:latest`; then Render via `RENDER_DEPLOY_HOOK` |
+
+Secret `RENDER_DEPLOY_HOOK` = full Render Deploy Hook URL (repo secret, not an app env). Without it, Hub still updates; Render stays on the old digests until a manual redeploy.
 
 To publish a release image: bump `package.json` version, tag `vX.Y.Z`, create the GitHub Release.
 

@@ -68,6 +68,19 @@ jobs:
       - name: Push :version and :latest to Docker Hub
         run: make docker-push-release-hub APP_VERSION=${{ needs.validate.outputs.version }}
 
+      - name: Trigger Render redeploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "${RENDER_DEPLOY_HOOK}" ]; then
+            echo "RENDER_DEPLOY_HOOK secret not set; skipping Render redeploy"
+            exit 0
+          fi
+          echo "Triggering Render deploy hook…"
+          curl -fsS -X GET "${RENDER_DEPLOY_HOOK}"
+          echo
+          echo "Render deploy requested"
+
       - name: Docker Hub description
         uses: peter-evans/dockerhub-description@v5
         with:
