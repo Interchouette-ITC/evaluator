@@ -53,3 +53,8 @@ database.db
 */target/
 .github_credentials
 .cursor
+
+# local env (never commit)
+.env
+.env.*
+!.env.example
