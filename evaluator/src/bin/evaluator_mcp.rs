@@ -4,7 +4,7 @@
 //! evaluator-mcp
 //! evaluator-mcp --http
 //! evaluator-mcp --http --listen 0.0.0.0:9790
-//! EVALUATOR_MCP_HTTP=1 evaluator-mcp
+//! MCP_HTTP=true evaluator-mcp
 //! ```
 
 use anyhow::Result;
@@ -18,8 +18,12 @@ use evaluator::mcp::server::{run, run_http, DEFAULT_HTTP_LISTEN};
     version
 )]
 struct Cli {
-    /// Serve Streamable HTTP instead of stdio (also: `EVALUATOR_MCP_HTTP=1`).
-    #[arg(long, env = "EVALUATOR_MCP_HTTP")]
+    /// Serve Streamable HTTP instead of stdio.
+    #[arg(
+        long,
+        env = "MCP_HTTP",
+        value_parser = clap::builder::BoolishValueParser::new()
+    )]
     http: bool,
 
     /// HTTP bind address when `--http` is set (also: `EVALUATOR_MCP_ADDR`).

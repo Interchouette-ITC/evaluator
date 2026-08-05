@@ -92,7 +92,7 @@ case "$cmd" in
         mcp_http
       fi
     done
-    if [ "${EVALUATOR_MCP_HTTP:-}" = "1" ] || [ "${EVALUATOR_MCP_HTTP:-}" = "true" ]; then
+    if [ "${MCP_HTTP:-}" = "1" ] || [ "${MCP_HTTP:-}" = "true" ]; then
       mcp_http
     fi
     echo "[entrypoint] MCP stdio" >&2
