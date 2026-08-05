@@ -12,9 +12,13 @@
 **/*.swo
 
 node_modules
+**/node_modules
 .nx
+**/.nx
 .angular
+**/.angular
 dist
+**/dist
 .docker-fast-context
 tmp
 out-tsc
