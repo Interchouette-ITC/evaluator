@@ -73,7 +73,7 @@ const apiProxy = proxy({
 });
 
 const mcpProxy = proxy({
-  target: 'http://127.0.0.1:9788',
+  target: 'http://127.0.0.1:9790',
   changeOrigin: true,
   pathRewrite: (path) => (path === '/' || path === '' ? '/mcp' : `/mcp${path}`),
   proxyTimeout: 120_000,

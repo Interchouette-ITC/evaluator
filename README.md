@@ -121,7 +121,7 @@ Rust CLI / Rust MCP
 
 Image: `interchouette/evaluator` — web + Chromium + Rust CLI + Rust MCP.
 
-Compose profile: `web` (ports `4000` + `9788`).
+Compose profile: `web` (ports `4000` + `9790`).
 
 | Mode | Behavior |
 | --- | --- |
@@ -204,7 +204,7 @@ make docker-run-cli ARGS='evaluate --url https://example.com --fn window.eval'
 make docker-run-cli ARGS='batch -p /data/archive/test.csv -n 1 -f window.eval'
 # Interactive: docker run -it --rm --network host interchouette/evaluator:dev evaluator
 make docker-run-mcp          # stdio (evaluator-mcp)
-# MCP HTTP is published on :9788 with make docker-run (ENABLE_MCP=1)
+# MCP HTTP is published on :9790 with make docker-run (ENABLE_MCP=1)
 ```
 
 ### CI / CD
@@ -297,9 +297,9 @@ Rust MCP (`evaluator-mcp`, mcpkit): tools `evaluate`, `list_functions`, and `bat
 
 | Endpoint | Auth | When |
 | --- | --- | --- |
-| `http://127.0.0.1:9788/mcp` | none | Local sidecar (Docker `-p 9788:9788`) |
+| `http://127.0.0.1:9790/mcp` | none | Local sidecar (Docker `-p 9790:9790`) |
 | `http://mcp:mcp@127.0.0.1:4000/mcp` | basic `MCP_USER`/`MCP_PWD` (defaults `mcp`/`mcp`) | Via Express proxy on the web port |
-| `https://mcp:mcp@evaluator.interchouette.net/mcp` | same boat defaults | Public demo (Render: only web `PORT` is public; use `/mcp`, not `:9788`) |
+| `https://mcp:mcp@evaluator.interchouette.net/mcp` | same boat defaults | Public demo (Render: only web `PORT` is public; use `/mcp`, not `:9790`) |
 
 Defaults are public by design for the shared demo. Override `MCP_USER`/`MCP_PWD` only for a **private** deploy and share creds out-of-band — do not reuse `DB_*`. Set `ENABLE_MCP_PROXY=0` to disable the gateway route.
 
@@ -310,7 +310,7 @@ Cursor HTTP example:
 ```
 
 ```shell
-make run-mcp-http          # host: evaluator-mcp --http (:9788)
+make run-mcp-http          # host: evaluator-mcp --http (:9790)
 make run-mcp               # host: stdio
 make docker-run-mcp        # image stdio
 ```
@@ -329,7 +329,7 @@ Same page and hook: `JSON.stringify` on `https://cursor.com`. Warmup discarded; 
 Takeaways:
 
 1. Prefer **Playwright** (default; unset or `USE_PUPPETEER=0`).
-2. Prefer **MCP HTTP** over stdio when available — same evaluate work, no spawn tax. Local `:9788` or proxied `https://mcp:mcp@host/mcp`.
+2. Prefer **MCP HTTP** over stdio when available — same evaluate work, no spawn tax. Local `:9790` or proxied `https://mcp:mcp@host/mcp`.
 3. Hit counts and screenshots were comparable across engines (~75–84 console hits).
 
 </details>

@@ -5,14 +5,14 @@ services:
     image: interchouette/evaluator:dev
     ports:
       - "4000:4000"
-      - "9788:9788"
+      - "9790:9790"
     environment:
       - PORT=4000
       - ENABLE_MCP=1
       - ENABLE_MCP_PROXY=1
       - MCP_USER=mcp
       - MCP_PWD=mcp
-      - EVALUATOR_MCP_ADDR=0.0.0.0:9788
+      - EVALUATOR_MCP_ADDR=0.0.0.0:9790
       - EVALUATOR_NODE_ENTRY=/app/dist/evaluator/server/server.js
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -26,7 +26,7 @@ services:
 volumes:
   evaluator-data:
 
-# All-in-one: web :4000 + MCP HTTP :9788 (ENABLE_MCP=0 for web only)
+# All-in-one: web :4000 + MCP HTTP :9790 (ENABLE_MCP=0 for web only)
 # make docker-pull-dev && make docker-run
 # CLI:  docker compose … run --rm evaluator evaluator batch -p /data/archive/test.csv -n 1
 # stdio: docker run -i --rm --network host interchouette/evaluator:dev mcp

@@ -1,11 +1,11 @@
 #!/bin/sh
 # All-in-one evaluator image entrypoint.
-# Default: web :4000 + MCP HTTP :9788 (ENABLE_MCP=1). Set ENABLE_MCP=0 for web only.
+# Default: web :4000 + MCP HTTP :9790 (ENABLE_MCP=1). Set ENABLE_MCP=0 for web only.
 # CLI: interactive (long-lived + optional MCP) vs one-shot evaluate/batch (no MCP).
 set -eu
 
 ENABLE_MCP="${ENABLE_MCP:-1}"
-export EVALUATOR_MCP_ADDR="${EVALUATOR_MCP_ADDR:-0.0.0.0:9788}"
+export EVALUATOR_MCP_ADDR="${EVALUATOR_MCP_ADDR:-0.0.0.0:9790}"
 export EVALUATOR_NODE_ENTRY="${EVALUATOR_NODE_ENTRY:-/app/dist/evaluator/server/server.js}"
 
 mcp_http() {

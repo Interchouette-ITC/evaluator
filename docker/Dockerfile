@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # All-in-one: web (Chromium) + Rust CLI + Rust MCP (stdio / HTTP).
-# Default: web :4000 + MCP HTTP :9788. ENABLE_MCP=0 → web only.
+# Default: web :4000 + MCP HTTP :9790. ENABLE_MCP=0 → web only.
 #   docker run … mcp              # stdio
 #   docker run … mcp --http       # HTTP only
 #   docker run … evaluator -p …   # Rust CLI → Node evaluate/batch
@@ -63,7 +63,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     SQLITE_PATH=/app/data/database.db \
     FUNCTIONS_PATH=/app/data/functions.json \
     ENABLE_MCP=1 \
-    EVALUATOR_MCP_ADDR=0.0.0.0:9788 \
+    EVALUATOR_MCP_ADDR=0.0.0.0:9790 \
     EVALUATOR_NODE_ENTRY=/app/dist/evaluator/server/server.js
 
 COPY --from=builder --chown=app:app /app/package.json /app/package-lock.json ./
@@ -76,7 +76,7 @@ COPY --chown=app:app docker/entrypoint.sh ./docker/entrypoint.sh
 RUN chmod +x /app/docker/entrypoint.sh /usr/local/bin/evaluator /usr/local/bin/evaluator-mcp
 
 USER app
-EXPOSE 4000 9788
+EXPOSE 4000 9790
 
 ENTRYPOINT ["/app/docker/entrypoint.sh"]
 CMD ["web"]
