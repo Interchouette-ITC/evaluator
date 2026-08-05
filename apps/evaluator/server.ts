@@ -219,20 +219,21 @@ async function runBatchCli(argv: string[]): Promise<void> {
     process.exit(2);
   }
   void concurrency; // one browser, sequential (plan)
-  const outcomes = await runBatch({
+  // Never take/emit screenshots in batch — base64 PNGs OOM the host.
+  const count = await runBatch({
     urls,
     fn,
+    screenshot: false,
     onSite: (site, outcome) => {
       console.log(
         JSON.stringify({
           url: site,
           results: outcome.results,
-          screenshot: outcome.screenshot,
         })
       );
     },
   });
-  console.error(`[evaluate] batch done count=${outcomes.length}`);
+  console.error(`[evaluate] batch done count=${count}`);
 }
 
 async function main(): Promise<void> {
