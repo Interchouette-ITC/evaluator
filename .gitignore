@@ -47,12 +47,10 @@ testem.log
 Thumbs.db
 
 # runtime / local data
+/db/
 database.db
-/data/
 
 */target/
-.github_credentials
-.cursor
 
 # local env (never commit)
 .env

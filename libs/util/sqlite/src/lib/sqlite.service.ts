@@ -5,7 +5,7 @@ import { dirname, resolve } from 'path';
 import { Message } from '@evaluator/shared-types';
 
 const DEFAULT_DB_PATH = resolve(
-  process.env['SQLITE_PATH'] || 'data/database.db'
+  process.env['SQLITE_PATH'] || 'db/database.db'
 );
 
 export class SqliteService {

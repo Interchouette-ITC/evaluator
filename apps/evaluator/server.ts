@@ -91,7 +91,10 @@ export function createApp(): express.Express {
 
   app.use('/db', auth);
   app.get('/db/database.db', (_req: Request, res: Response) => {
-    res.sendFile(join(process.cwd(), 'database.db'), {
+    const sqlitePath =
+      process.env['SQLITE_PATH']?.trim() ||
+      join(process.cwd(), 'db', 'database.db');
+    res.sendFile(sqlitePath, {
       headers: { 'Cache-Control': 'no-cache' },
     });
   });

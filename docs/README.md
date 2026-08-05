@@ -26,6 +26,17 @@ compromised / demo page
 
 **Live:** [https://evaluator.interchouette.net](https://evaluator.interchouette.net)
 
+
+## Docs
+
+| Doc | Description |
+| --- | --- |
+| [`CHANGELOG.md`](CHANGELOG.md) | Release notes |
+| [`evaluator/MAGECART.md`](../evaluator/MAGECART.md) | Magecart / Grelos product notes |
+| [`evaluator/README.md`](../evaluator/README.md) | Rust CLI details |
+| [`docker/`](../docker/) | Dockerfile / Compose (Hub overview lives in private `.cursor/scripts/DOCKERHUB.md`) |
+
+
 Typically helps with deobfuscating patterns like [this Stack Overflow case](https://stackoverflow.com/questions/32977908/how-can-i-deobfuscate-this-javascript) using `String.fromCharCode`, `window.eval`, or other functions like `JSON.stringify`.
 
 ---
@@ -34,14 +45,14 @@ Typically helps with deobfuscating patterns like [this Stack Overflow case](http
 
 Static scanners (Willem’s rules, VT + YARA) see files on disk. Skimmers often stay opaque until the browser runs them. **Evaluator is the complementary runtime tool:** after the packer calls `eval`, you see `grelos_v`, `checkout`, gate URLs, and friends in the hook output.
 
-Full product notes (warnings, canary vs demos, batch): **[`evaluator/MAGECART.md`](evaluator/MAGECART.md)** — start there for Magecart / Grelos context.
+Full product notes (warnings, canary vs demos, batch): **[`evaluator/MAGECART.md`](../evaluator/MAGECART.md)** — start there for Magecart / Grelos context.
 
 ### References
 
 - Jérôme Segura (Malwarebytes), *Hunting web skimmers with VirusTotal and YARA*, VB2021 — [PDF](https://vblocalhost.com/uploads/VB2021-Segura.pdf)
-- Product notes (Magecart / Grelos / Blogspot demo fixtures): [`evaluator/MAGECART.md`](evaluator/MAGECART.md)
+- Product notes (Magecart / Grelos / Blogspot demo fixtures): [`evaluator/MAGECART.md`](../evaluator/MAGECART.md)
 - Astra — signs of hacked OpenCart / Magento / PrestaShop stores (malicious JS): [getastra.com article](https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store)
-- Willem de Groot — magento-malware-scanner frontend rules: [`rules/frontend.txt`](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt) (local snapshot: [`evaluator/rules/frontend.txt`](evaluator/rules/frontend.txt))
+- Willem de Groot — magento-malware-scanner frontend rules: [`rules/frontend.txt`](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt) (local snapshot: [`evaluator/rules/frontend.txt`](../evaluator/rules/frontend.txt))
 
 <details open>
 <summary><strong>Screenshots</strong> — web UI in action</summary>
@@ -75,13 +86,13 @@ https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsre
 
 ## Demos — illustrate the PDF story on localhost
 
-Research fixtures under [`evaluator/archive/fixtures/`](evaluator/archive/fixtures/). **Serve only on localhost.** Do **not** expose them through Nest, Express, the Docker public image, or any internet-facing route. Details: [`DEOBFUSCATED.md`](evaluator/archive/fixtures/DEOBFUSCATED.md), [`MAGECART.md`](evaluator/MAGECART.md).
+Research fixtures under [`evaluator/archive/fixtures/`](../evaluator/archive/fixtures/). **Serve only on localhost.** Do **not** expose them through Nest, Express, the Docker public image, or any internet-facing route. Details: [`DEOBFUSCATED.md`](../evaluator/archive/fixtures/DEOBFUSCATED.md), [`MAGECART.md`](../evaluator/MAGECART.md).
 
 | # | Obfuscated | Deobfuscated | What you learn |
 | --- | --- | --- | --- |
-| **1** | [`demo1shop.html`](evaluator/archive/fixtures/demo1shop.html) | [`demo1shop.deobfuscated.js`](evaluator/archive/fixtures/demo1shop.deobfuscated.js) | Neutral shop JS; historical `_0xd419` hex packer → `eval` → `checkout` / `cart` |
-| **2** | [`demo2grelos.html`](evaluator/archive/fixtures/demo2grelos.html) | [`demo2grelos.deobfuscated.js`](evaluator/archive/fixtures/demo2grelos.deobfuscated.js) | Grelos-shaped marker; light teaching packer |
-| **3** | [`demo3grelos.html`](evaluator/archive/fixtures/demo3grelos.html) | [`demo3grelos.deobfuscated.js`](evaluator/archive/fixtures/demo3grelos.deobfuscated.js) | Same marker; Magento-era `_0x` hex-table → `eval` (demo‑1 packing family) |
+| **1** | [`demo1shop.html`](../evaluator/archive/fixtures/demo1shop.html) | [`demo1shop.deobfuscated.js`](../evaluator/archive/fixtures/demo1shop.deobfuscated.js) | Neutral shop JS; historical `_0xd419` hex packer → `eval` → `checkout` / `cart` |
+| **2** | [`demo2grelos.html`](../evaluator/archive/fixtures/demo2grelos.html) | [`demo2grelos.deobfuscated.js`](../evaluator/archive/fixtures/demo2grelos.deobfuscated.js) | Grelos-shaped marker; light teaching packer |
+| **3** | [`demo3grelos.html`](../evaluator/archive/fixtures/demo3grelos.html) | [`demo3grelos.deobfuscated.js`](../evaluator/archive/fixtures/demo3grelos.deobfuscated.js) | Same marker; Magento-era `_0x` hex-table → `eval` (demo‑1 packing family) |
 
 ```bash
 cd evaluator/archive/fixtures && python3 -m http.server 8765
@@ -212,7 +223,7 @@ make docker-run-mcp          # stdio (evaluator-mcp)
 | Workflow | Trigger | What |
 | --- | --- | --- |
 | `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
-| `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR; then Render via `RENDER_DEPLOY_HOOK` |
+| `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR; then Render via `RENDER_DEPLOY_HOOK` (Hub Overview: `python3 .cursor/scripts/sync-hub-description.py`) |
 | `release.yml` | GitHub Release `vX.Y.Z` | attach host `evaluator` + `evaluator-mcp` binaries; push monolith `:X.Y.Z` + `:latest` → Hub + GHCR; Render redeploy |
 
 Secret `RENDER_DEPLOY_HOOK` = full Render Deploy Hook URL (repo secret, not an app env). Without it, Hub still updates; Render stays on the old digests until a manual redeploy.
@@ -284,7 +295,7 @@ Needs `npm run build` (Node entry at `dist/evaluator/server/server.js`) + Chromi
 | One-shot | `evaluator evaluate --url … [--fn …]` |
 | CSV batch | `evaluator batch -p archive/test.csv -f window.eval -n 1` |
 
-See [evaluator/README.md](evaluator/README.md) for details.
+See [evaluator/README.md](../evaluator/README.md) for details.
 
 </details>
 
@@ -338,7 +349,7 @@ Takeaways:
 
 ## License
 
-[GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html) — see [`LICENSE`](LICENSE).
+[GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html) — see [`LICENSE`](../LICENSE).
 
 ### Security
 

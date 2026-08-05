@@ -17,10 +17,10 @@ services:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
       - USE_PUPPETEER=0
-      - SQLITE_PATH=/app/data/database.db
-      - FUNCTIONS_PATH=/app/data/functions.json
+      - SQLITE_PATH=/app/db/database.db
+      - FUNCTIONS_PATH=/app/db/functions.json
     volumes:
-      - evaluator-data:/app/data
+      - evaluator-data:/app/db
       - ../evaluator:/data:ro
 
 volumes:

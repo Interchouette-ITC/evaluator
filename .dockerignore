@@ -19,6 +19,7 @@ dist
 tmp
 out-tsc
 coverage
+db/
 database.db
 .env
 .env.*
@@ -30,7 +31,6 @@ evaluator/target
 
 # Local tooling / docs not needed in image
 *.md
-!README.md
 Makefile
 .dockerignore
 docker/*.md

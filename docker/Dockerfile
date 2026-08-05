@@ -51,8 +51,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     ca-certificates \
   && groupadd --system --gid 1001 app \
   && useradd --system --uid 1001 --gid app --create-home --home-dir /home/app app \
-  && mkdir -p /app/data \
-  && chown -R app:app /app/data
+  && mkdir -p /app/db \
+  && chown -R app:app /app/db
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
@@ -60,8 +60,8 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     USE_PUPPETEER=0 \
     PORT=4000 \
     NODE_ENV=production \
-    SQLITE_PATH=/app/data/database.db \
-    FUNCTIONS_PATH=/app/data/functions.json \
+    SQLITE_PATH=/app/db/database.db \
+    FUNCTIONS_PATH=/app/db/functions.json \
     ENABLE_MCP=1 \
     EVALUATOR_MCP_ADDR=0.0.0.0:9790 \
     EVALUATOR_NODE_ENTRY=/app/dist/evaluator/server/server.js

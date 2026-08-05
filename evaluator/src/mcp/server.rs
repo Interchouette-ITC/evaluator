@@ -141,12 +141,12 @@ fn functions_candidates() -> Vec<PathBuf> {
             out.push(PathBuf::from(t));
         }
     }
-    out.push(PathBuf::from("/app/data/functions.json"));
+    out.push(PathBuf::from("/app/db/functions.json"));
     if let Ok(cwd) = env::current_dir() {
-        out.push(cwd.join("data/functions.json"));
-        out.push(cwd.join("../data/functions.json"));
+        out.push(cwd.join("db/functions.json"));
+        out.push(cwd.join("../db/functions.json"));
     }
-    out.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../data/functions.json"));
+    out.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../db/functions.json"));
     out
 }
 
