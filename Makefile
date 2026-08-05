@@ -1,5 +1,5 @@
 .PHONY: help \
-	build build-release check check-lib install clean run run-mcp run-mcp-http \
+	build build-release check check-lib install clean run run-batch-capped run-mcp run-mcp-http \
 	docker-build docker-build-no-cache docker-build-dev \
 	docker-push-dev docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -41,6 +41,8 @@ help:
 	@echo "  make install           cargo install --path evaluator --features apps"
 	@echo "  make run ARGS='…'      cargo run --bin evaluator --features apps -- …"
 	@echo "                         e.g. make run ARGS='evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval'"
+	@echo "  make run-batch-capped  same as run, wrapped in systemd --scope MemoryMax=$(MEMORY_MAX)"
+	@echo "                         e.g. make run-batch-capped ARGS='batch -p archive/test.csv -f window.eval'"
 	@echo "  make run-mcp           cargo run --bin evaluator-mcp (stdio)"
 	@echo "  make run-mcp-http      cargo run --bin evaluator-mcp -- --http"
 	@echo "  (needs: npm run build + Chromium / PUPPETEER_EXECUTABLE_PATH)"
@@ -81,6 +83,13 @@ clean:
 
 run:
 	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin $(CLI_BIN) -- $(if $(strip $(ARGS)),$(ARGS),--help)
+
+# Cap batch RAM so the OOM killer hits the job scope, not Cursor/desktop.
+MEMORY_MAX ?= 4G
+run-batch-capped:
+	@test -n "$(strip $(ARGS))" || (echo 'usage: make run-batch-capped ARGS="batch -p …"' >&2; exit 2)
+	systemd-run --user --scope -p MemoryMax=$(MEMORY_MAX) --quiet -- \
+		$(MAKE) run ARGS='$(ARGS)'
 
 run-mcp:
 	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- $(ARGS)

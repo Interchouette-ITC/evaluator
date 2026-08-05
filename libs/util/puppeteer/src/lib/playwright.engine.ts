@@ -35,59 +35,69 @@ export class PlaywrightEngine implements EvaluateSession {
     });
   }
 
-  async goto(message: Message): Promise<string | undefined> {
+  async goto(
+    message: Message,
+    opts?: { screenshot?: boolean; waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit' }
+  ): Promise<string | undefined> {
     const page = await this.getNewPage(message);
     if (!page) {
       return;
     }
-    this.setListener(page);
-    let aborted = false;
-    let url = '';
-    this.ws?.send(JSON.stringify('request'));
-    console.error(getHostname(message.url.trim()));
-    const hostname = getHostname(message.url.trim());
-    await page.route('**/*', async (route) => {
-      const req = route.request();
-      if (
-        req.isNavigationRequest() &&
-        req.frame() === page.mainFrame() &&
-        !req.url().includes(hostname)
-      ) {
-        aborted = true;
-        url = req.url();
-        console.error(req.url(), message.url);
-        this.ws?.send(JSON.stringify('aborted before redirection to ' + req.url()));
-        await route.abort();
-      } else {
-        await route.continue();
-      }
-    });
-    this.ws?.send(JSON.stringify('set request interception'));
-    this.ws?.send(JSON.stringify('server message.url ' + message.url.trim()));
-    console.error('server message.url', message.url.trim());
-    let error = false;
-    await page
-      .goto(message.url.trim(), {
-        timeout: EVALUATE_TIMEOUT_MS,
-        waitUntil: 'networkidle',
-      })
-      .catch((err: Error) => {
-        this.ws?.send(JSON.stringify('error ' + err.toString()));
-        console.error(message.url, url, err);
-        error = true;
+    const takeScreenshot = opts?.screenshot !== false;
+    const waitUntil = opts?.waitUntil ?? 'networkidle';
+    try {
+      this.setListener(page);
+      let aborted = false;
+      let url = '';
+      this.ws?.send(JSON.stringify('request'));
+      console.error(getHostname(message.url.trim()));
+      const hostname = getHostname(message.url.trim());
+      await page.route('**/*', async (route) => {
+        const req = route.request();
+        if (
+          req.isNavigationRequest() &&
+          req.frame() === page.mainFrame() &&
+          !req.url().includes(hostname)
+        ) {
+          aborted = true;
+          url = req.url();
+          console.error(req.url(), message.url);
+          this.ws?.send(JSON.stringify('aborted before redirection to ' + req.url()));
+          await route.abort();
+        } else {
+          await route.continue();
+        }
       });
-    if (!aborted && !error) {
-      this.ws?.send(JSON.stringify('server tries screenshot'));
-      console.error('server tries screenshot', message.url.trim());
-      const buffer = await page.screenshot({ type: 'png' });
-      const base64 = buffer.toString('base64');
-      this.ws?.send(JSON.stringify('screenshot done'));
-      console.error('server screenshot');
-      if (base64) {
-        return JSON.stringify(`data:image/png;base64,${base64}`);
+      this.ws?.send(JSON.stringify('set request interception'));
+      this.ws?.send(JSON.stringify('server message.url ' + message.url.trim()));
+      console.error('server message.url', message.url.trim());
+      let error = false;
+      await page
+        .goto(message.url.trim(), {
+          timeout: EVALUATE_TIMEOUT_MS,
+          waitUntil,
+        })
+        .catch((err: Error) => {
+          this.ws?.send(JSON.stringify('error ' + err.toString()));
+          console.error(message.url, url, err);
+          error = true;
+        });
+      if (!aborted && !error && takeScreenshot) {
+        this.ws?.send(JSON.stringify('server tries screenshot'));
+        console.error('server tries screenshot', message.url.trim());
+        const buffer = await page.screenshot({ type: 'png' });
+        const base64 = buffer.toString('base64');
+        this.ws?.send(JSON.stringify('screenshot done'));
+        console.error('server screenshot');
+        if (base64) {
+          return JSON.stringify(`data:image/png;base64,${base64}`);
+        }
       }
+      return;
+    } finally {
+      // One context per site — must close or batch leaks Chromium contexts until OOM.
+      await page.context().close().catch(() => undefined);
     }
-    return;
   }
 
   private async getNewPage(message: Message) {
@@ -100,14 +110,20 @@ export class PlaywrightEngine implements EvaluateSession {
       return;
     }
     this.ws?.send(JSON.stringify('get browser'));
-    const context = await browser.newContext({ userAgent: EVALUATE_USER_AGENT });
-    const page = await context.newPage();
-    this.ws?.send(JSON.stringify('new page done'));
-    const tpl = buildEvalTemplate(message);
-    await this.sqliteService.insert(message);
-    this.ws?.send(JSON.stringify('evaluate Document'));
-    await page.addInitScript(tpl);
-    return page;
+    try {
+      const context = await browser.newContext({ userAgent: EVALUATE_USER_AGENT });
+      const page = await context.newPage();
+      this.ws?.send(JSON.stringify('new page done'));
+      const tpl = buildEvalTemplate(message);
+      await this.sqliteService.insert(message);
+      this.ws?.send(JSON.stringify('evaluate Document'));
+      await page.addInitScript(tpl);
+      return page;
+    } catch (err) {
+      console.error('getNewPage failed', err);
+      this.ws?.send(JSON.stringify('getNewPage err ' + String(err)));
+      return;
+    }
   }
 
   async close() {

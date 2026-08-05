@@ -29,6 +29,11 @@ export type RunBatchOpts = {
   fn?: string;
   /** Reserved; batch uses one browser and processes sites sequentially. */
   concurrency?: number;
+  /**
+   * Default false. Screenshots are huge base64 strings; enabling them in batch
+   * will OOM the host when combined with context leaks.
+   */
+  screenshot?: boolean;
   onSite?: (site: string, outcome: RunEvaluateOutcome) => void;
 };
 
@@ -108,12 +113,14 @@ export async function runEvaluate(opts: RunEvaluateOpts): Promise<RunEvaluateOut
 }
 
 /**
- * Batch evaluate: one Chromium for the whole run (sequential pages on one session).
+ * Batch evaluate: one Chromium for the whole run (sequential sites).
+ * Streams each site via onSite and does not retain outcomes (or screenshots).
+ * Returns the number of sites processed.
  */
-export async function runBatch(opts: RunBatchOpts): Promise<RunEvaluateOutcome[]> {
+export async function runBatch(opts: RunBatchOpts): Promise<number> {
   const urls = opts.urls.map((u) => u.trim()).filter(Boolean);
   if (urls.length === 0) {
-    return [];
+    return 0;
   }
   for (const url of urls) {
     if (!isValidHttpUrl(url)) {
@@ -125,7 +132,8 @@ export async function runBatch(opts: RunBatchOpts): Promise<RunEvaluateOutcome[]
   const session = createEvaluateSession();
   const fn = opts.fn || '';
   const clearFn = !!fn;
-  const all: RunEvaluateOutcome[] = [];
+  const takeScreenshot = opts.screenshot === true;
+  let count = 0;
 
   try {
     for (const url of urls) {
@@ -137,19 +145,34 @@ export async function runBatch(opts: RunBatchOpts): Promise<RunEvaluateOutcome[]
         });
       let screenshot: string | undefined;
       try {
-        screenshot = (await session.goto({ url, fn, clearFn })) || undefined;
+        const shot = await session.goto(
+          { url, fn, clearFn },
+          {
+            screenshot: takeScreenshot,
+            // Storefronts rarely reach networkidle; that path OOMs / hangs the host.
+            waitUntil: 'load',
+          }
+        );
+        if (takeScreenshot) {
+          screenshot = shot || undefined;
+        }
+      } catch (err) {
+        console.error(`[evaluate] site failed ${url}`, err);
       } finally {
         subscription.unsubscribe();
       }
-      const outcome = { results, screenshot };
-      all.push(outcome);
+      const outcome: RunEvaluateOutcome = takeScreenshot
+        ? { results, screenshot }
+        : { results };
+      count += 1;
       opts.onSite?.(url, outcome);
+      // Do not push onto an array — drop outcome after the callback returns.
     }
   } finally {
     await session.close();
     console.error('[evaluate] browser closed');
   }
-  return all;
+  return count;
 }
 
 export { dedupAndFilter };

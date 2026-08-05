@@ -2,8 +2,18 @@ import type { Message } from '@evaluator/shared-types';
 import type { Observable } from 'rxjs';
 import type { ConsoleHit } from './console-hit';
 
+export type GotoOpts = {
+  /** Default true. Batch must pass false — PNG base64 retains hundreds of MB. */
+  screenshot?: boolean;
+  /**
+   * Default `networkidle` (single evaluate / UI). Batch should use `load` —
+   * storefronts never go idle and keep Chromium thrashing for minutes.
+   */
+  waitUntil?: 'load' | 'domcontentloaded' | 'networkidle' | 'commit';
+};
+
 export interface EvaluateSession {
-  goto(message: Message): Promise<string | undefined>;
+  goto(message: Message, opts?: GotoOpts): Promise<string | undefined>;
   close(): Promise<void>;
   readonly results: Observable<ConsoleHit>;
 }
