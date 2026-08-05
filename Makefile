@@ -47,7 +47,7 @@ help:
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-pull-dev       Pull Hub :dev (preferred local test)"
-	@echo "  make docker-run            Web :4000 + MCP HTTP :8788 (ENABLE_MCP=1)"
+	@echo "  make docker-run            Web :4000 + MCP HTTP :9788 (ENABLE_MCP=1)"
 	@echo "  make docker-run-detached   Same, detached"
 	@echo "  make docker-build-dev      All-in-one build + :dev + :latest tags (CI)"
 	@echo "  make docker-build          All-in-one :$(TAG) + :$(APP_VERSION)"
@@ -183,7 +183,7 @@ docker-run-detached:
 	docker compose -f $(COMPOSE_PROD) --profile web up -d --force-recreate --pull always
 
 docker-run-dev:
-	@echo "Starting evaluator (foreground, compose --build). UI: http://localhost:4000 MCP: :8788"
+	@echo "Starting evaluator (foreground, compose --build). UI: http://localhost:4000 MCP: :9788"
 	@echo "Prefer: make docker-pull-dev && make docker-run"
 	docker compose -f $(COMPOSE_PROD) --profile web down --remove-orphans 2>/dev/null || true
 	docker rm -f $(APP_NAME) 2>/dev/null || true
@@ -199,8 +199,8 @@ docker-run-mcp:
 		$(HUB_IMAGE):dev mcp
 
 docker-run-mcp-http:
-	@echo "MCP HTTP is published on :8788 when ENABLE_MCP=1 (default with make docker-run)"
-	@echo "Or: docker run --rm -p 8788:8788 $(HUB_IMAGE):dev mcp --http"
+	@echo "MCP HTTP is published on :9788 when ENABLE_MCP=1 (default with make docker-run)"
+	@echo "Or: docker run --rm -p 9788:9788 $(HUB_IMAGE):dev mcp --http"
 
 docker-stop:
 	docker compose -f $(COMPOSE_PROD) --profile web down --remove-orphans

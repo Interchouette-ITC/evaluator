@@ -3,7 +3,7 @@
 //! ```bash
 //! evaluator-mcp
 //! evaluator-mcp --http
-//! evaluator-mcp --http --listen 0.0.0.0:8788
+//! evaluator-mcp --http --listen 0.0.0.0:9788
 //! EVALUATOR_MCP_HTTP=1 evaluator-mcp
 //! ```
 

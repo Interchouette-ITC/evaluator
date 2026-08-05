@@ -171,7 +171,7 @@ pub async fn run() -> Result<(), McpError> {
 }
 
 /// Default HTTP bind address for Streamable MCP.
-pub const DEFAULT_HTTP_LISTEN: &str = "0.0.0.0:8788";
+pub const DEFAULT_HTTP_LISTEN: &str = "0.0.0.0:9788";
 
 /// Serves MCP over Streamable HTTP until the process is stopped.
 pub async fn run_http(addr: &str) -> std::io::Result<()> {
