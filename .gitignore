@@ -1,9 +1,10 @@
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
 # compiled output
-/dist
+dist
 /tmp
 /out-tsc
+coverage
 
 # dependencies
 node_modules
@@ -13,8 +14,7 @@ node_modules
 .angular
 
 # local caches
-.cache/*
-!.cache/.gitkeep
+.cache/
 
 # IDEs and editors
 /.idea
@@ -35,7 +35,6 @@ node_modules
 # misc
 /.sass-cache
 /connect.lock
-/coverage
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
