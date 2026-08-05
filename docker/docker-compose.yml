@@ -21,7 +21,7 @@ services:
       - FUNCTIONS_PATH=/app/db/functions.json
     volumes:
       - evaluator-data:/app/db
-      - ../evaluator:/data:ro
+      - ../rust:/data:ro
 
 volumes:
   evaluator-data:

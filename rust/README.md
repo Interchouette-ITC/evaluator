@@ -2,7 +2,7 @@
 
 Host binary under this directory. Build with `make build` / `make install` from the repo root (`--features apps`), or `cargo build --features apps` here.
 
-**One engine:** CLI/MCP always spawn the shared Node entry (`dist/evaluator/server/server.js`) with `evaluate` or `batch`. No gateway HTTP, no `--legacy`. Needs `npm run build` at the repo root + Chromium (`PUPPETEER_EXECUTABLE_PATH`).
+**One engine:** CLI/MCP always spawn the shared Node entry (`dist/evaluator/server/server.js`) with `evaluate` or `batch`. No gateway HTTP, no `--legacy`. Needs `npm run build` in `www/` + Chromium (`PUPPETEER_EXECUTABLE_PATH`).
 
 Override the Node entry with `EVALUATOR_NODE_ENTRY`.
 

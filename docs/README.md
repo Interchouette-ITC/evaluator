@@ -32,8 +32,8 @@ compromised / demo page
 | Doc | Description |
 | --- | --- |
 | [`CHANGELOG.md`](CHANGELOG.md) | Release notes |
-| [`evaluator/MAGECART.md`](../evaluator/MAGECART.md) | Magecart / Grelos product notes |
-| [`evaluator/README.md`](../evaluator/README.md) | Rust CLI details |
+| [`evaluator/MAGECART.md`](../rust/MAGECART.md) | Magecart / Grelos product notes |
+| [`evaluator/README.md`](../rust/README.md) | Rust CLI details |
 | [`docker/`](../docker/) | Dockerfile / Compose (Hub overview lives in private `.cursor/scripts/DOCKERHUB.md`) |
 
 
@@ -45,14 +45,14 @@ Typically helps with deobfuscating patterns like [this Stack Overflow case](http
 
 Static scanners (Willem’s rules, VT + YARA) see files on disk. Skimmers often stay opaque until the browser runs them. **Evaluator is the complementary runtime tool:** after the packer calls `eval`, you see `grelos_v`, `checkout`, gate URLs, and friends in the hook output.
 
-Full product notes (warnings, canary vs demos, batch): **[`evaluator/MAGECART.md`](../evaluator/MAGECART.md)** — start there for Magecart / Grelos context.
+Full product notes (warnings, canary vs demos, batch): **[`evaluator/MAGECART.md`](../rust/MAGECART.md)** — start there for Magecart / Grelos context.
 
 ### References
 
 - Jérôme Segura (Malwarebytes), *Hunting web skimmers with VirusTotal and YARA*, VB2021 — [PDF](https://vblocalhost.com/uploads/VB2021-Segura.pdf)
-- Product notes (Magecart / Grelos / Blogspot demo fixtures): [`evaluator/MAGECART.md`](../evaluator/MAGECART.md)
+- Product notes (Magecart / Grelos / Blogspot demo fixtures): [`evaluator/MAGECART.md`](../rust/MAGECART.md)
 - Astra — signs of hacked OpenCart / Magento / PrestaShop stores (malicious JS): [getastra.com article](https://www.getastra.com/e/malware/infections/the-presence-of-these-malicious-javascript-are-the-sign-of-hacked-opencart-magento-or-prestashop-store)
-- Willem de Groot — magento-malware-scanner frontend rules: [`rules/frontend.txt`](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt) (local snapshot: [`evaluator/rules/frontend.txt`](../evaluator/rules/frontend.txt))
+- Willem de Groot — magento-malware-scanner frontend rules: [`rules/frontend.txt`](https://github.com/gwillem/magento-malware-scanner/blob/master/rules/frontend.txt) (local snapshot: [`evaluator/rules/frontend.txt`](../rust/rules/frontend.txt))
 
 <details open>
 <summary><strong>Screenshots</strong> — web UI in action</summary>
@@ -86,16 +86,16 @@ https://evaluator.interchouette.net/evaluate/?url=https://www.w3schools.com/jsre
 
 ## Demos — illustrate the PDF story on localhost
 
-Research fixtures under [`evaluator/archive/fixtures/`](../evaluator/archive/fixtures/). **Serve only on localhost.** Do **not** expose them through Nest, Express, the Docker public image, or any internet-facing route. Details: [`DEOBFUSCATED.md`](../evaluator/archive/fixtures/DEOBFUSCATED.md), [`MAGECART.md`](../evaluator/MAGECART.md).
+Research fixtures under [`evaluator/archive/fixtures/`](../rust/archive/fixtures/). **Serve only on localhost.** Do **not** expose them through Nest, Express, the Docker public image, or any internet-facing route. Details: [`DEOBFUSCATED.md`](../rust/archive/fixtures/DEOBFUSCATED.md), [`MAGECART.md`](../rust/MAGECART.md).
 
 | # | Obfuscated | Deobfuscated | What you learn |
 | --- | --- | --- | --- |
-| **1** | [`demo1shop.html`](../evaluator/archive/fixtures/demo1shop.html) | [`demo1shop.deobfuscated.js`](../evaluator/archive/fixtures/demo1shop.deobfuscated.js) | Neutral shop JS; historical `_0xd419` hex packer → `eval` → `checkout` / `cart` |
-| **2** | [`demo2grelos.html`](../evaluator/archive/fixtures/demo2grelos.html) | [`demo2grelos.deobfuscated.js`](../evaluator/archive/fixtures/demo2grelos.deobfuscated.js) | Grelos-shaped marker; light teaching packer |
-| **3** | [`demo3grelos.html`](../evaluator/archive/fixtures/demo3grelos.html) | [`demo3grelos.deobfuscated.js`](../evaluator/archive/fixtures/demo3grelos.deobfuscated.js) | Same marker; Magento-era `_0x` hex-table → `eval` (demo‑1 packing family) |
+| **1** | [`demo1shop.html`](../rust/archive/fixtures/demo1shop.html) | [`demo1shop.deobfuscated.js`](../rust/archive/fixtures/demo1shop.deobfuscated.js) | Neutral shop JS; historical `_0xd419` hex packer → `eval` → `checkout` / `cart` |
+| **2** | [`demo2grelos.html`](../rust/archive/fixtures/demo2grelos.html) | [`demo2grelos.deobfuscated.js`](../rust/archive/fixtures/demo2grelos.deobfuscated.js) | Grelos-shaped marker; light teaching packer |
+| **3** | [`demo3grelos.html`](../rust/archive/fixtures/demo3grelos.html) | [`demo3grelos.deobfuscated.js`](../rust/archive/fixtures/demo3grelos.deobfuscated.js) | Same marker; Magento-era `_0x` hex-table → `eval` (demo‑1 packing family) |
 
 ```bash
-cd evaluator/archive/fixtures && python3 -m http.server 8765
+cd rust/archive/fixtures && python3 -m http.server 8765
 # or: ./smoke-demos.sh
 ```
 
@@ -108,9 +108,9 @@ evaluator evaluate --url http://127.0.0.1:8765/demo3grelos.html --fn window.eval
 Filter live/batch hits with keywords, regex, or Willem’s rules:
 
 ```bash
-evaluator batch -p evaluator/archive/All-Live-Magento-Sites.csv \
+evaluator batch -p rust/archive/All-Live-Magento-Sites.csv \
   -f window.eval -n 1 \
-  --rules evaluator/rules/frontend.txt
+  --rules rust/rules/frontend.txt
 ```
 
 **Authorized research only.** If you confirm a live compromise, report it responsibly to the merchant / hoster.
@@ -204,7 +204,7 @@ Visit http://localhost:4000/
 make docker-build-dev   # or make docker-build
 ```
 
-Optional local packaging after `npm run build`: `make docker-build`.
+Optional local packaging after `cd www && npm run build`: `make docker-build`.
 
 CLI / MCP (built into the all-in-one image; CLI does **not** need web up):
 
@@ -222,13 +222,13 @@ make docker-run-mcp          # stdio (evaluator-mcp)
 
 | Workflow | Trigger | What |
 | --- | --- | --- |
-| `ci.yml` | PR / push to `dev` | `npm ci` + `npm run build` |
+| `ci.yml` | PR / push to `dev` | `www/`: `npm ci` + `npm run build` |
 | `docker-build-push-dev.yml` | manual | monolith `:dev` + `:latest` → Hub + GHCR; then Render via `RENDER_DEPLOY_HOOK` (Hub Overview: `python3 .cursor/scripts/sync-hub-description.py`) |
 | `release.yml` | GitHub Release `vX.Y.Z` | attach host `evaluator` + `evaluator-mcp` binaries; push monolith `:X.Y.Z` + `:latest` → Hub + GHCR; Render redeploy |
 
 Secret `RENDER_DEPLOY_HOOK` = full Render Deploy Hook URL (repo secret, not an app env). Without it, Hub still updates; Render stays on the old digests until a manual redeploy.
 
-To publish a release: bump **both** `package.json` and `evaluator/Cargo.toml` to the same `X.Y.Z`, tag `vX.Y.Z`, create the GitHub Release. Workflow validates the tag against both versions.
+To publish a release: bump **both** `www/package.json` and `rust/Cargo.toml` to the same `X.Y.Z`, tag `vX.Y.Z`, create the GitHub Release. Workflow validates the tag against both versions.
 
 </details>
 
@@ -243,13 +243,13 @@ To publish a release: bump **both** `package.json` and `evaluator/Cargo.toml` to
 - Evaluate engine: **Playwright by default** on distro Chromium (`PUPPETEER_EXECUTABLE_PATH`); set `USE_PUPPETEER=1` for Puppeteer
 
 ```shell
-npm install
+cd www && npm install
 ```
 
 ## Development server
 
 ```shell
-npm start
+cd www && npm start
 ```
 
 Dev UI: http://localhost:4200/ (API proxied; Nest backend on 3333).
@@ -257,13 +257,13 @@ Dev UI: http://localhost:4200/ (API proxied; Nest backend on 3333).
 ## Build
 
 ```shell
-npm run build
+cd www && npm run build
 ```
 
-Artifacts land in `dist/`. Serve production Node gateway + Nest:
+Artifacts land in `www/dist/`. Serve production Node gateway + Nest:
 
 ```shell
-npm run serve
+cd www && npm run serve
 ```
 
 Then open http://localhost:4000/
@@ -271,7 +271,7 @@ Then open http://localhost:4000/
 ## Test
 
 ```shell
-npm test
+cd www && npm test
 ```
 
 </details>
@@ -282,12 +282,12 @@ npm test
 Same shape as sibling ITC crates (`make build` / `make run` / `make install`):
 
 ```shell
-make build              # → evaluator/target/debug/evaluator (+ evaluator-mcp)
+make build              # → rust/target/debug/evaluator (+ evaluator-mcp)
 make install            # → ~/.cargo/bin (features apps)
 make run ARGS='evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval'
 ```
 
-Needs `npm run build` (Node entry at `dist/evaluator/server/server.js`) + Chromium.
+Needs `cd www && npm run build` (Node entry at `www/dist/evaluator/server/server.js`) + Chromium.
 
 | Mode | Command |
 | --- | --- |
@@ -295,7 +295,7 @@ Needs `npm run build` (Node entry at `dist/evaluator/server/server.js`) + Chromi
 | One-shot | `evaluator evaluate --url … [--fn …]` |
 | CSV batch | `evaluator batch -p archive/test.csv -f window.eval -n 1` |
 
-See [evaluator/README.md](../evaluator/README.md) for details.
+See [evaluator/README.md](../rust/README.md) for details.
 
 </details>
 

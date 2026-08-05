@@ -15,18 +15,19 @@ HUB_IMAGE ?= interchouette/evaluator
 GHCR_PERSONAL_IMAGE ?= ghcr.io/groussac/evaluator
 GHCR_ORG_IMAGE ?= ghcr.io/interchouette-itc/evaluator
 TAG ?= latest
-APP_VERSION ?= $(shell node -p "require('./package.json').version")
+APP_VERSION ?= $(shell node -p "require('./www/package.json').version")
 DOCKERFILE ?= docker/Dockerfile
 DOCKER_BUILDKIT ?= 1
 CI ?= 0
 COMPOSE_PROD ?= docker/docker-compose.yml
+WWW ?= www
 
 # Host Rust CLI / MCP — same shape as tvscreener-rs
 unexport CARGO_TARGET_DIR
 CARGO_BIN ?= cargo
 CARGO = env -u CARGO_TARGET_DIR $(CARGO_BIN)
 CARGO_FLAGS ?= --features apps
-CLI_MANIFEST ?= evaluator/Cargo.toml
+CLI_MANIFEST ?= rust/Cargo.toml
 CLI_BIN ?= evaluator
 
 .DEFAULT_GOAL := help
@@ -38,14 +39,14 @@ help:
 	@echo "  make build             cargo build $(CARGO_FLAGS) → evaluator + evaluator-mcp"
 	@echo "  make build-release     cargo build --release $(CARGO_FLAGS)"
 	@echo "  make check / check-lib cargo check (apps) / lean lib"
-	@echo "  make install           cargo install --path evaluator --features apps"
+	@echo "  make install           cargo install --path rust --features apps"
 	@echo "  make run ARGS='…'      cargo run --bin evaluator --features apps -- …"
 	@echo "                         e.g. make run ARGS='evaluate --url http://127.0.0.1:8765/demo1shop.html --fn window.eval'"
 	@echo "  make run-batch-capped  same as run, wrapped in systemd --scope MemoryMax=$(MEMORY_MAX)"
 	@echo "                         e.g. make run-batch-capped ARGS='batch -p archive/test.csv -f window.eval'"
 	@echo "  make run-mcp           cargo run --bin evaluator-mcp (stdio)"
 	@echo "  make run-mcp-http      cargo run --bin evaluator-mcp -- --http"
-	@echo "  (needs: npm run build + Chromium / PUPPETEER_EXECUTABLE_PATH)"
+	@echo "  (needs: cd www && npm run build + Chromium / PUPPETEER_EXECUTABLE_PATH)"
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-pull-dev       Pull Hub :dev (preferred local test)"
@@ -76,13 +77,13 @@ check-lib:
 	$(CARGO) check --manifest-path $(CLI_MANIFEST) --lib
 
 install:
-	$(CARGO) install --path evaluator --force --features apps
+	$(CARGO) install --path rust --force --features apps
 
 clean:
 	$(CARGO) clean --manifest-path $(CLI_MANIFEST)
 
 run:
-	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin $(CLI_BIN) -- $(if $(strip $(ARGS)),$(ARGS),--help)
+	cd rust && $(CARGO) run $(CARGO_FLAGS) --bin $(CLI_BIN) -- $(if $(strip $(ARGS)),$(ARGS),--help)
 
 # Cap batch RAM so the OOM killer hits the job scope, not Cursor/desktop.
 MEMORY_MAX ?= 4G
@@ -92,13 +93,13 @@ run-batch-capped:
 		$(MAKE) run ARGS='$(ARGS)'
 
 run-mcp:
-	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- $(ARGS)
+	cd rust && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- $(ARGS)
 
 run-mcp-http:
-	cd evaluator && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- --http $(ARGS)
+	cd rust && $(CARGO) run $(CARGO_FLAGS) --bin evaluator-mcp -- --http $(ARGS)
 
 version-show:
-	@echo "package.json version: $(APP_VERSION)"
+	@echo "www/package.json version: $(APP_VERSION)"
 	@echo "suggested tags: $(HUB_IMAGE):$(APP_VERSION) $(HUB_IMAGE):latest $(HUB_IMAGE):dev"
 
 docker-build:

@@ -23,8 +23,10 @@ jobs:
         with:
           node-version: "26"
           cache: npm
+          cache-dependency-path: www/package-lock.json
 
       - name: Install
+        working-directory: www
         run: npm ci
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
@@ -32,6 +34,7 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
 
       - name: Build
+        working-directory: www
         run: npm run build
         env:
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"

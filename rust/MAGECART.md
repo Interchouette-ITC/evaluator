@@ -63,7 +63,7 @@ evaluator evaluate \
 | 3 | `demo3grelos.html` | `demo3grelos.deobfuscated.js` | Grelos marker; Magento-era `_0x` hex-table → `eval` |
 
 ```bash
-cd evaluator/archive/fixtures && python3 -m http.server 8765
+cd rust/archive/fixtures && python3 -m http.server 8765
 # or: ./smoke-demos.sh
 ```
 
@@ -78,13 +78,13 @@ See [`archive/fixtures/README.md`](./archive/fixtures/README.md) and [`archive/f
 ### Batch
 
 ```bash
-evaluator batch -p evaluator/archive/test.csv -f window.eval -n 1
+evaluator batch -p rust/archive/test.csv -f window.eval -n 1
 ```
 
 ```bash
-evaluator batch -p evaluator/archive/All-Live-Magento-Sites.csv \
+evaluator batch -p rust/archive/All-Live-Magento-Sites.csv \
   -f window.eval -n 2 \
-  --rules evaluator/rules/frontend.txt
+  --rules rust/rules/frontend.txt
 ```
 
 ## How this fits together

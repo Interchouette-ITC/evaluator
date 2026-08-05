@@ -9,7 +9,7 @@ STARTED_SERVER=0
 
 need_evaluator() {
   command -v evaluator >/dev/null || {
-    echo "evaluator not on PATH (cargo install --path evaluator/)" >&2
+    echo "evaluator not on PATH (cargo install --path rust/)" >&2
     exit 1
   }
 }

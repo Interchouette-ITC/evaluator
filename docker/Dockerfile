@@ -11,7 +11,7 @@ ARG RUST_IMAGE=rust:1.88-bookworm
 
 FROM ${RUST_IMAGE} AS rust-builder
 WORKDIR /src
-COPY evaluator/ ./
+COPY rust/ ./
 RUN cargo build --release --features apps --bin evaluator --bin evaluator-mcp
 
 FROM ${NODE_IMAGE} AS builder
@@ -24,11 +24,11 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true \
     USE_PUPPETEER=0 \
     NX_NO_CLOUD=true
 
-COPY package.json package-lock.json ./
+COPY www/package.json www/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci
 
-COPY . .
+COPY www/ .
 RUN --mount=type=cache,target=/root/.npm \
     npm run build \
   && npm prune --omit=dev

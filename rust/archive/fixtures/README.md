@@ -14,7 +14,7 @@ Raw Blogspot dump (do not scan): [`demo1shop-blogspot-raw.html`](./demo1shop-blo
 ## Run
 
 ```bash
-cd evaluator/archive/fixtures
+cd rust/archive/fixtures
 python3 -m http.server 8765
 ```
 

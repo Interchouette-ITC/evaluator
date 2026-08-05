@@ -40,18 +40,18 @@ jobs:
             exit 1
           fi
           VERSION="${TAG#v}"
-          PKG_VERSION="$(node -p "require('./package.json').version")"
-          CARGO_VERSION="$(awk '/^version = /{gsub(/"/, "", $3); print $3; exit}' evaluator/Cargo.toml)"
+          PKG_VERSION="$(node -p "require('./www/package.json').version")"
+          CARGO_VERSION="$(awk '/^version = /{gsub(/"/, "", $3); print $3; exit}' rust/Cargo.toml)"
           if [ "$VERSION" != "$PKG_VERSION" ]; then
-            echo "Release tag version ($VERSION) does not match package.json ($PKG_VERSION)"
+            echo "Release tag version ($VERSION) does not match www/package.json ($PKG_VERSION)"
             exit 1
           fi
           if [ "$VERSION" != "$CARGO_VERSION" ]; then
-            echo "Release tag version ($VERSION) does not match evaluator/Cargo.toml ($CARGO_VERSION)"
+            echo "Release tag version ($VERSION) does not match rust/Cargo.toml ($CARGO_VERSION)"
             exit 1
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "OK: tag $TAG matches package.json + Cargo.toml $VERSION"
+          echo "OK: tag $TAG matches www/package.json + rust/Cargo.toml $VERSION"
 
   build-and-push:
     name: Build and Push Images
@@ -75,15 +75,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build release binaries (CLI + MCP)
-        working-directory: evaluator
+        working-directory: rust
         run: cargo build --release --features apps --bin evaluator --bin evaluator-mcp
 
       - name: Upload binaries to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            evaluator/target/release/evaluator
-            evaluator/target/release/evaluator-mcp
+            rust/target/release/evaluator
+            rust/target/release/evaluator-mcp
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4

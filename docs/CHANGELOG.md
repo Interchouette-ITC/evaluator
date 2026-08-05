@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Move Nx workspace under `www/`; Rust CLI/MCP tree to `rust/`; remove unused `tools/`
 - Docs live under [`docs/`](.) (`README.md`, this changelog); Docker Hub Overview maintained privately in `.cursor/scripts/DOCKERHUB.md`
 - Runtime SQLite default path is `db/database.db` (Docker: `/app/db/database.db`)
 
