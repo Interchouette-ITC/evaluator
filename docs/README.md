@@ -187,7 +187,7 @@ Images (primary):
 - GHCR: `ghcr.io/interchouette-itc/evaluator`
 - Personal GHCR (optional): `ghcr.io/groussac/evaluator`
 
-The former Hub mirror `gregoshop/evaluator` is **deprecated**. No separate `evaluator-base`. MCP HTTP is on by default (`ENABLE_MCP=0` to disable).
+The former Hub mirror `gregoshop/evaluator` is **deprecated** and is **no longer published**. No separate `evaluator-base`. MCP HTTP is on by default (`ENABLE_MCP=0` to disable).
 
 ### Run CI-built `:dev` (preferred locally)
 
