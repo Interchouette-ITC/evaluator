@@ -13,6 +13,7 @@
 APP_NAME ?= evaluator
 HUB_IMAGE ?= interchouette/evaluator
 GHCR_PERSONAL_IMAGE ?= ghcr.io/groussac/evaluator
+GHCR_WORKER_IMAGE ?= ghcr.io/interchouette/evaluator
 GHCR_ORG_IMAGE ?= ghcr.io/interchouette-itc/evaluator
 TAG ?= latest
 APP_VERSION ?= $(shell node -p "require('./www/package.json').version")
@@ -126,6 +127,8 @@ docker-build-dev:
 		-t $(HUB_IMAGE):latest \
 		-t $(GHCR_PERSONAL_IMAGE):dev \
 		-t $(GHCR_PERSONAL_IMAGE):latest \
+		-t $(GHCR_WORKER_IMAGE):dev \
+		-t $(GHCR_WORKER_IMAGE):latest \
 		-t $(GHCR_ORG_IMAGE):dev \
 		-t $(GHCR_ORG_IMAGE):latest \
 		-f $(DOCKERFILE) \
@@ -140,6 +143,8 @@ docker-push-dev-ghcr-personal:
 	docker push $(GHCR_PERSONAL_IMAGE):latest
 
 docker-push-dev-ghcr-itc:
+	docker push $(GHCR_WORKER_IMAGE):dev
+	docker push $(GHCR_WORKER_IMAGE):latest
 	docker push $(GHCR_ORG_IMAGE):dev
 	docker push $(GHCR_ORG_IMAGE):latest
 
@@ -169,8 +174,12 @@ docker-push-release-ghcr-personal:
 	docker push $(GHCR_PERSONAL_IMAGE):latest
 
 docker-push-release-ghcr-itc:
+	docker tag $(HUB_IMAGE):$(APP_VERSION) $(GHCR_WORKER_IMAGE):$(APP_VERSION)
+	docker tag $(HUB_IMAGE):latest $(GHCR_WORKER_IMAGE):latest
 	docker tag $(HUB_IMAGE):$(APP_VERSION) $(GHCR_ORG_IMAGE):$(APP_VERSION)
 	docker tag $(HUB_IMAGE):latest $(GHCR_ORG_IMAGE):latest
+	docker push $(GHCR_WORKER_IMAGE):$(APP_VERSION)
+	docker push $(GHCR_WORKER_IMAGE):latest
 	docker push $(GHCR_ORG_IMAGE):$(APP_VERSION)
 	docker push $(GHCR_ORG_IMAGE):latest
 
