@@ -23,10 +23,9 @@ CI ?= 0
 COMPOSE_PROD ?= docker/docker-compose.yml
 WWW ?= www
 
-# Host Rust CLI / MCP — same shape as tvscreener-rs
-unexport CARGO_TARGET_DIR
+# Host Rust CLI / MCP
 CARGO_BIN ?= cargo
-CARGO = env -u CARGO_TARGET_DIR $(CARGO_BIN)
+CARGO = $(CARGO_BIN)
 CARGO_FLAGS ?= --features apps
 CLI_MANIFEST ?= rust/Cargo.toml
 CLI_BIN ?= evaluator
