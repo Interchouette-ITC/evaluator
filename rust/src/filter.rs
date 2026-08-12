@@ -34,9 +34,7 @@ impl HitFilter {
             .collect();
 
         let regex = match regex.map(str::trim).filter(|s| !s.is_empty()) {
-            Some(pat) => Some(
-                Regex::new(pat).map_err(|e| format!("invalid --regex: {e}"))?,
-            ),
+            Some(pat) => Some(Regex::new(pat).map_err(|e| format!("invalid --regex: {e}"))?),
             None => None,
         };
 
@@ -92,7 +90,7 @@ impl HitFilter {
             for lit in &rule.literals {
                 if let Some(i) = payload.find(lit.as_str()) {
                     let span = (i, i + lit.len());
-                    if rule_hit.map_or(true, |r| span.0 < r.0) {
+                    if rule_hit.is_none_or(|r| span.0 < r.0) {
                         rule_hit = Some(span);
                     }
                 }
@@ -100,7 +98,7 @@ impl HitFilter {
             for re in &rule.regexes {
                 if let Some(m) = re.find(payload) {
                     let span = (m.start(), m.end());
-                    if rule_hit.map_or(true, |r| span.0 < r.0) {
+                    if rule_hit.is_none_or(|r| span.0 < r.0) {
                         rule_hit = Some(span);
                     }
                 }
@@ -150,8 +148,8 @@ fn ceil_char_boundary(s: &str, mut i: usize) -> usize {
 }
 
 fn load_rules_file(path: &Path) -> Result<Vec<Rule>, String> {
-    let text = fs::read_to_string(path)
-        .map_err(|e| format!("read --rules {}: {e}", path.display()))?;
+    let text =
+        fs::read_to_string(path).map_err(|e| format!("read --rules {}: {e}", path.display()))?;
     parse_frontend_rules(&text)
 }
 
@@ -176,9 +174,7 @@ fn parse_frontend_rules(text: &str) -> Result<Vec<Rule>, String> {
                 match Regex::new(&rust_pat) {
                     Ok(re) => regexes.push(re),
                     Err(e) => {
-                        eprintln!(
-                            "warning: skip regex in rule {name:?}: {e} (pattern {pat:?})"
-                        );
+                        eprintln!("warning: skip regex in rule {name:?}: {e} (pattern {pat:?})");
                     }
                 }
             }
@@ -316,8 +312,7 @@ fn find_matching_bracket(s: &str, open_idx: usize) -> Option<usize> {
     let mut depth = 0i32;
     let mut in_str = false;
     let mut escape = false;
-    for i in open_idx..bytes.len() {
-        let c = bytes[i];
+    for (i, &c) in bytes.iter().enumerate().skip(open_idx) {
         if in_str {
             if escape {
                 escape = false;

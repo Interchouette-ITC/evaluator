@@ -25,24 +25,45 @@ required-features = ["mcp"]
 
 [dependencies]
 anyhow = { version = "1", optional = true }
+axum = { version = "0.8", default-features = false, features = [
+  "http1",
+  "tokio",
+  "json",
+], optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
-mcpkit = { version = "0.7", optional = true }
-mcpkit-axum = { version = "0.7", optional = true }
 regex = "1"
-rustyline = { version = "14", optional = true }
+rmcp = { version = "3.1.2", default-features = false, features = [
+  "server",
+  "macros",
+  "transport-io",
+  "transport-streamable-http-server",
+], optional = true }
+rustyline = { version = "18", optional = true }
+schemars = { version = "1", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs", "process", "io-util", "time"], optional = true }
+tokio = { version = "1", features = [
+  "macros",
+  "rt-multi-thread",
+  "fs",
+  "process",
+  "io-util",
+  "time",
+  "net",
+], optional = true }
 tracing = { version = "0.1", optional = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+tracing-subscriber = { version = "0.3", features = [
+  "env-filter",
+], optional = true }
 
 [features]
 default = []
 cli = ["dep:anyhow", "dep:clap", "dep:rustyline", "dep:serde", "dep:serde_json"]
 mcp = [
   "cli",
-  "dep:mcpkit",
-  "dep:mcpkit-axum",
+  "dep:axum",
+  "dep:rmcp",
+  "dep:schemars",
   "dep:tokio",
   "dep:tracing",
   "dep:tracing-subscriber",

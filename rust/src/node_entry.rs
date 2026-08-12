@@ -21,9 +21,8 @@ pub fn resolve_node_entry() -> Result<PathBuf> {
 
     let mut candidates: Vec<PathBuf> = Vec::new();
     candidates.push(PathBuf::from("/app/dist/evaluator/server/server.js"));
-    candidates.push(
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../dist/evaluator/server/server.js"),
-    );
+    candidates
+        .push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../dist/evaluator/server/server.js"));
     if let Ok(cwd) = env::current_dir() {
         candidates.push(cwd.join("dist/evaluator/server/server.js"));
         // When cwd is evaluator/, walk up once.

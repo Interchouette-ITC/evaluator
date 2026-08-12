@@ -1,30 +1,54 @@
-//! MCP server (`mcpkit`) for `evaluator-mcp` (stdio or Streamable HTTP).
+//! MCP server (`rmcp`) for `evaluator-mcp` (stdio or Streamable HTTP).
 
 #![allow(clippy::unused_async)]
 
-use crate::node_entry::{spawn_batch, spawn_evaluate};
-use mcpkit::prelude::*;
-use mcpkit::transport::stdio::StdioTransport;
-use mcpkit_axum::McpRouter;
 use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::Arc;
 
-/// MCP server handle — tools spawn the shared Node entry.
+use rmcp::{
+    handler::server::wrapper::Parameters,
+    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo},
+    tool, tool_handler, tool_router,
+    transport::stdio,
+    ErrorData as McpError, ServerHandler, ServiceExt,
+};
+
+use crate::mcp::tool_args::{BatchArgs, EvaluateArgs};
+use crate::node_entry::{spawn_batch, spawn_evaluate};
+
+/// MCP server handle - tools spawn the shared Node entry.
+#[derive(Clone, Default)]
 pub struct EvaluatorMcp;
 
-// Keep in sync with Cargo.toml `version`.
-#[mcp_server(name = "evaluator", version = "1.0.0")]
+/// Default HTTP bind address for Streamable MCP.
+pub const DEFAULT_HTTP_LISTEN: &str = "0.0.0.0:9790";
+
+fn text_ok(text: impl Into<String>) -> CallToolResult {
+    CallToolResult::success(vec![ContentBlock::text(text.into())])
+}
+
+fn text_err(err: impl Into<String>) -> CallToolResult {
+    CallToolResult::error(vec![ContentBlock::text(err.into())])
+}
+
+#[tool_router]
 impl EvaluatorMcp {
     #[tool(description = "Evaluate a JS hook on one URL (spawns Node evaluate; one Chromium)")]
-    async fn evaluate(&self, url: String, function: Option<String>) -> ToolOutput {
+    async fn evaluate(
+        &self,
+        Parameters(EvaluateArgs { url, function }): Parameters<EvaluateArgs>,
+    ) -> Result<CallToolResult, McpError> {
         let fn_expr = function.unwrap_or_default();
-        match tokio::task::spawn_blocking(move || spawn_evaluate(&url, &fn_expr)).await {
-            Ok(Ok(body)) => ToolOutput::text(body),
-            Ok(Err(err)) => ToolOutput::error(err.to_string()),
-            Err(err) => ToolOutput::error(err.to_string()),
-        }
+        Ok(
+            match tokio::task::spawn_blocking(move || spawn_evaluate(&url, &fn_expr)).await {
+                Ok(Ok(body)) => text_ok(body),
+                Ok(Err(err)) => text_err(err.to_string()),
+                Err(err) => text_err(err.to_string()),
+            },
+        )
     }
 
     #[tool(
@@ -32,27 +56,33 @@ impl EvaluatorMcp {
     )]
     async fn batch(
         &self,
-        urls: Option<Vec<String>>,
-        path: Option<String>,
-        function: Option<String>,
-    ) -> ToolOutput {
+        Parameters(BatchArgs {
+            urls,
+            path,
+            function,
+        }): Parameters<BatchArgs>,
+    ) -> Result<CallToolResult, McpError> {
         let fn_expr = function.unwrap_or_default();
-        match tokio::task::spawn_blocking(move || run_batch_tool(urls, path, fn_expr)).await {
-            Ok(Ok(text)) => ToolOutput::text(text),
-            Ok(Err(err)) => ToolOutput::error(err),
-            Err(err) => ToolOutput::error(err.to_string()),
-        }
+        Ok(
+            match tokio::task::spawn_blocking(move || run_batch_tool(urls, path, fn_expr)).await {
+                Ok(Ok(text)) => text_ok(text),
+                Ok(Err(err)) => text_err(err),
+                Err(err) => text_err(err.to_string()),
+            },
+        )
     }
 
     #[tool(
         description = "List known evaluate function groups from FUNCTIONS_PATH / packaged functions.json (no web server required)"
     )]
-    async fn list_functions(&self) -> ToolOutput {
-        match tokio::task::spawn_blocking(read_functions_catalog).await {
-            Ok(Ok(text)) => ToolOutput::text(text),
-            Ok(Err(err)) => ToolOutput::error(err),
-            Err(err) => ToolOutput::error(err.to_string()),
-        }
+    async fn list_functions(&self) -> Result<CallToolResult, McpError> {
+        Ok(
+            match tokio::task::spawn_blocking(read_functions_catalog).await {
+                Ok(Ok(text)) => text_ok(text),
+                Ok(Err(err)) => text_err(err),
+                Err(err) => text_err(err.to_string()),
+            },
+        )
     }
 }
 
@@ -102,7 +132,10 @@ fn csv_domains(text: &str) -> Vec<String> {
     let Some(header) = lines.next() else {
         return Vec::new();
     };
-    let cols: Vec<&str> = header.split(',').map(|c| c.trim().trim_matches('"')).collect();
+    let cols: Vec<&str> = header
+        .split(',')
+        .map(|c| c.trim().trim_matches('"'))
+        .collect();
     let col = cols
         .iter()
         .position(|h| {
@@ -116,7 +149,9 @@ fn csv_domains(text: &str) -> Vec<String> {
         if !h.eq_ignore_ascii_case("domain") && !h.eq_ignore_ascii_case("url") {
             return std::iter::once(h.to_string())
                 .chain(lines.filter_map(|line| {
-                    line.split(',').next().map(|c| c.trim().trim_matches('"').to_string())
+                    line.split(',')
+                        .next()
+                        .map(|c| c.trim().trim_matches('"').to_string())
                 }))
                 .filter(|s| !s.is_empty())
                 .collect();
@@ -153,8 +188,7 @@ fn functions_candidates() -> Vec<PathBuf> {
 fn read_functions_catalog() -> Result<String, String> {
     for path in functions_candidates() {
         if path.is_file() {
-            return fs::read_to_string(&path)
-                .map_err(|e| format!("read {}: {e}", path.display()));
+            return fs::read_to_string(&path).map_err(|e| format!("read {}: {e}", path.display()));
         }
     }
     // Fallback: empty catalog message (Nest generates on first /api/functions).
@@ -162,65 +196,56 @@ fn read_functions_catalog() -> Result<String, String> {
 }
 
 /// Serves MCP over stdio until the client disconnects.
-pub async fn run() -> Result<(), McpError> {
-    let transport = StdioTransport::new();
-    let server = ServerBuilder::new(EvaluatorMcp)
-        .with_tools(EvaluatorMcp)
-        .build();
-    server.serve(transport).await
+pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let server = EvaluatorMcp;
+    let service = server.serve(stdio()).await?;
+    service.waiting().await?;
+    Ok(())
 }
-
-/// Default HTTP bind address for Streamable MCP.
-pub const DEFAULT_HTTP_LISTEN: &str = "0.0.0.0:9790";
 
 /// Serves MCP over Streamable HTTP until the process is stopped.
 pub async fn run_http(addr: &str) -> std::io::Result<()> {
-    McpRouter::new(EvaluatorMcp).serve(addr).await
+    let config =
+        rmcp::transport::streamable_http_server::tower::StreamableHttpServerConfig::default();
+    let service = rmcp::transport::streamable_http_server::tower::StreamableHttpService::new(
+        || Ok(EvaluatorMcp),
+        Arc::new(
+            rmcp::transport::streamable_http_server::session::local::LocalSessionManager::default(),
+        ),
+        config,
+    );
+    let method_router = axum::routing::any_service(service);
+    let app = axum::Router::new()
+        .route("/mcp", method_router.clone())
+        .route("/mcp/", method_router);
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    tracing::info!(%addr, "evaluator-mcp HTTP listening");
+    axum::serve(listener, app).await?;
+    Ok(())
 }
 
-impl ResourceHandler for EvaluatorMcp {
-    async fn list_resources(&self, _ctx: &Context<'_>) -> Result<Vec<Resource>, McpError> {
-        Ok(Vec::new())
-    }
-
-    async fn read_resource(
-        &self,
-        uri: &str,
-        _ctx: &Context<'_>,
-    ) -> Result<Vec<ResourceContents>, McpError> {
-        Err(McpError::invalid_params(
-            "resources/read",
-            format!("unknown resource: {uri}"),
-        ))
-    }
-}
-
-impl PromptHandler for EvaluatorMcp {
-    async fn list_prompts(&self, _ctx: &Context<'_>) -> Result<Vec<Prompt>, McpError> {
-        Ok(Vec::new())
-    }
-
-    async fn get_prompt(
-        &self,
-        name: &str,
-        _args: Option<serde_json::Map<String, serde_json::Value>>,
-        _ctx: &Context<'_>,
-    ) -> Result<GetPromptResult, McpError> {
-        Err(McpError::invalid_params(
-            "prompts/get",
-            format!("unknown prompt: {name}"),
-        ))
+#[tool_handler]
+impl ServerHandler for EvaluatorMcp {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(rmcp::model::Implementation::new(
+                "evaluator",
+                env!("CARGO_PKG_VERSION"),
+            ))
+            .with_instructions(
+                "MCP tools for evaluator: evaluate one URL, batch up to 50 URLs (urls[] and/or CSV path), list_functions from FUNCTIONS_PATH / functions.json. Spawns the shared Node engine; no web server required.",
+            )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn mcp_server_version_matches_crate() {
-        assert_eq!(
-            env!("CARGO_PKG_VERSION"),
-            "1.0.0",
-            "bump #[mcp_server(version = …)] when changing Cargo.toml version"
-        );
+        let info = EvaluatorMcp.get_info();
+        assert_eq!(info.server_info.version, env!("CARGO_PKG_VERSION"));
+        assert_eq!(info.server_info.name.as_str(), "evaluator");
     }
 }
