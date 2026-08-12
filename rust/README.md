@@ -64,4 +64,4 @@ evaluator evaluate --url https://example.com --fn window.eval \
 
 Use `--excerpt` (or `--excerpt 120`) to print only a short snippet around each match.
 
-Also: **`evaluator-mcp`** (`make run-mcp` / `make run-mcp-http`) — same Node path via mcpkit tools `evaluate`, `batch`, `list_functions`.
+Also: **`evaluator-mcp`** (`make run-mcp` / `make run-mcp-http`) - same Node path via rmcp tools `evaluate`, `batch`, `list_functions`.

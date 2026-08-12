@@ -86,12 +86,7 @@ fn truncate_head(s: &str, max: usize) -> String {
 }
 
 /// Print one Node evaluate/batch JSON line for a site.
-pub fn print_node_json_line(
-    site: &str,
-    body: &str,
-    filter: &HitFilter,
-    excerpt: Option<usize>,
-) {
+pub fn print_node_json_line(site: &str, body: &str, filter: &HitFilter, excerpt: Option<usize>) {
     let payloads = extract_gateway_payloads(body);
     if payloads.is_empty() {
         if filter.is_active() {

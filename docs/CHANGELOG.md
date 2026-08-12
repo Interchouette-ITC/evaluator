@@ -21,7 +21,7 @@ First Interchouette / ITC packaging line for the modernized monorepo (`package.j
 
 - All-in-one Docker image `interchouette/evaluator` (Angular SPA + Nest API + Node serve/evaluate/batch + Chromium + Rust CLI + Rust MCP)
 - Rust CLI (`evaluator`): interactive prompt, one-shot `evaluate`, CSV `batch`
-- Rust MCP (`evaluator-mcp`, mcpkit): tools `evaluate`, `list_functions`, `batch` (stdio / Streamable HTTP)
+- Rust MCP (`evaluator-mcp`, rmcp): tools `evaluate`, `list_functions`, `batch` (stdio / Streamable HTTP)
 - Express `/mcp` proxy with dedicated basic auth (`MCP_USER` / `MCP_PWD`); public demo boat defaults
 - Playwright as default evaluate engine; `USE_PUPPETEER=1` to opt into Puppeteer
 - Magecart / Grelos teaching fixtures (`demo1`–`demo3`) and product notes

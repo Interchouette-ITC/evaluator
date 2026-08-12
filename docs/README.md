@@ -302,7 +302,7 @@ See [evaluator/README.md](../rust/README.md) for details.
 <details open>
 <summary><strong>MCP</strong> — agent tools + engine advice</summary>
 
-Rust MCP (`evaluator-mcp`, mcpkit): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path` with a `Domain` column; max 50 URLs). Tools spawn the shared Node entry — **no** `:4000` required. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
+Rust MCP (`evaluator-mcp`, rmcp): tools `evaluate`, `list_functions`, and `batch` (`urls[]` and/or local CSV `path` with a `Domain` column; max 50 URLs). Tools spawn the shared Node entry - **no** `:4000` required. Large CSVs stay on the Rust CLI (`evaluator batch -p …`).
 
 **Prefer MCP HTTP** over stdio (stdio pays a Docker spawn cost on cold start).
 

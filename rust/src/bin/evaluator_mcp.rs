@@ -1,4 +1,4 @@
-//! `evaluator-mcp` — MCP server (stdio by default, optional Streamable HTTP).
+//! `evaluator-mcp` - MCP server (stdio by default, optional Streamable HTTP).
 //!
 //! ```bash
 //! evaluator-mcp
