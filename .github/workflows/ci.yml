@@ -33,6 +33,10 @@ jobs:
           PUPPETEER_SKIP_DOWNLOAD: "true"
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
 
+      - name: npm audit (high+)
+        working-directory: www
+        run: npm audit --audit-level=high
+
       - name: Build
         working-directory: www
         run: npm run build

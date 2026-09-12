@@ -1,11 +1,26 @@
-# Keep GitHub Actions on current majors (Node 24+ action runtimes).
+# Keep npm and GitHub Actions on current non-major updates.
 version: 2
 updates:
+  - package-ecosystem: npm
+    directory: /www
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
     open-pull-requests-limit: 5
     labels:
       - dependencies
       - github-actions
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
