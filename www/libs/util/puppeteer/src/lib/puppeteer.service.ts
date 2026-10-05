@@ -3,7 +3,8 @@ import type { WebSocket } from 'ws';
 
 import { Message, MessageResult } from '@evaluator/shared-types';
 
-import { isValidHttpUrl } from './browser-engine';
+import { isValidHttpUrl, screenshotsEnabled } from './browser-engine';
+import { isEvaluateGuardError, withEvaluateSlot } from './evaluate-guard';
 import { createEvaluateSession } from './engine.factory';
 import { decorateResult, dedupAndFilter, runEvaluate } from './run-evaluate';
 
@@ -19,20 +20,37 @@ export class PuppeteerResolver {
       res.status(400).send([PuppeteerResolver.url_not_valid]);
       return;
     }
-    res.write('[');
+    let opened = false;
     try {
       const { screenshot } = await runEvaluate({
         url,
         fn,
         clearFn,
         onResult: (result: MessageResult) => {
+          if (!opened) {
+            res.write('[');
+            opened = true;
+          }
           res.write([JSON.stringify(result), ''].join());
         },
       });
+      if (!opened) {
+        res.write('[');
+      }
       res.write(['\n', screenshot || '', ']'].join(''));
       res.end();
     } catch (error) {
-      res.status(500).send([PuppeteerResolver.parse_failure, error?.toString()]);
+      if (isEvaluateGuardError(error)) {
+        if (!opened) {
+          res.status(503).json({ error: error.code, detail: error.message });
+          return;
+        }
+      }
+      if (!opened) {
+        res.status(500).send([PuppeteerResolver.parse_failure, error?.toString()]);
+      } else {
+        res.end();
+      }
       return next(error);
     }
   }
@@ -45,31 +63,40 @@ export class PuppeteerResolver {
       return;
     }
     try {
-      ws.send(JSON.stringify('try url ' + message.url));
-      message.fn && ws.send(JSON.stringify('fn ' + message.fn));
-      const session = createEvaluateSession(ws);
+      await withEvaluateSlot(async () => {
+        ws.send(JSON.stringify('try url ' + message.url));
+        message.fn && ws.send(JSON.stringify('fn ' + message.fn));
+        const session = createEvaluateSession(ws);
 
-      const subscription = session.results
-        .pipe(dedupAndFilter())
-        .subscribe((result: MessageResult | undefined) => {
-          ws.send(JSON.stringify('result found'));
-          result && ws.send(JSON.stringify(result));
+        const subscription = session.results
+          .pipe(dedupAndFilter())
+          .subscribe((result: MessageResult | undefined) => {
+            ws.send(JSON.stringify('result found'));
+            result && ws.send(JSON.stringify(result));
+          });
+        ws.send(JSON.stringify('goto page ' + message.url));
+        const screenshot = await session.goto(message, {
+          screenshot: screenshotsEnabled(),
         });
-      ws.send(JSON.stringify('goto page ' + message.url));
-      const screenshot = await session.goto(message);
-      if (screenshot) {
-        ws.send(JSON.stringify('send screenshot'));
-        ws.send(screenshot);
-      }
-      ws.send(JSON.stringify('close puppet'));
-      await session.close();
-      ws.send(JSON.stringify('puppet closed'));
+        if (screenshot) {
+          ws.send(JSON.stringify('send screenshot'));
+          ws.send(screenshot);
+        }
+        ws.send(JSON.stringify('close puppet'));
+        await session.close();
+        ws.send(JSON.stringify('puppet closed'));
+        subscription.unsubscribe();
+      });
       ws.send(JSON.stringify(false));
       ws.send(JSON.stringify('ws closed'));
       ws.close();
-      subscription.unsubscribe();
     } catch (error) {
-      ws.send(JSON.stringify('error ' + String(error)));
+      if (isEvaluateGuardError(error)) {
+        ws.send(JSON.stringify(`error ${error.code}: ${error.message}`));
+      } else {
+        ws.send(JSON.stringify('error ' + String(error)));
+      }
+      ws.close();
     }
   }
 }

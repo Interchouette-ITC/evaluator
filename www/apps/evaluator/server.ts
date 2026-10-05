@@ -11,6 +11,7 @@ import {
   isValidHttpUrl,
   runBatch,
   runEvaluate,
+  screenshotsEnabled,
 } from '@evaluator/util-puppeteer';
 import basicAuth from 'express-basic-auth';
 
@@ -88,6 +89,11 @@ export function createApp(): express.Express {
   const distFolder = join(process.cwd(), 'dist/evaluator/browser');
 
   app.get(/^\/evaluate(\/.*)?$/, PuppeteerResolver.resolve);
+
+  app.get('/evaluate-meta.json', (_req: Request, res: Response) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.json({ screenshots: screenshotsEnabled() });
+  });
 
   app.use('/db', auth);
   app.get('/db/database.db', (_req: Request, res: Response) => {

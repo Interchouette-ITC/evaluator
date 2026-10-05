@@ -22,7 +22,31 @@ export const CHROMIUM_LAUNCH_ARGS = [
   '--no-sandbox',
   '--disable-setuid-sandbox',
   '--disable-dev-shm-usage',
+  '--disable-gpu',
+  '--disable-extensions',
+  '--renderer-process-limit=1',
+  '--js-flags=--max-old-space-size=128',
 ] as const;
+
+const DEFAULT_MAX_RSS_MB = 280;
+
+/** When false, evaluate skips PNG capture (saves RAM on small hosts). */
+export function screenshotsEnabled(): boolean {
+  const v = process.env['EVALUATOR_SCREENSHOT'];
+  if (v !== undefined && v !== '') {
+    return v === '1' || v === 'true' || v === 'TRUE';
+  }
+  return process.env['NODE_ENV'] !== 'production';
+}
+
+export function maxRssBytes(): number {
+  const raw = process.env['EVALUATOR_MAX_RSS_MB'];
+  const mb = raw ? Number(raw) : DEFAULT_MAX_RSS_MB;
+  if (!Number.isFinite(mb) || mb <= 0) {
+    return DEFAULT_MAX_RSS_MB * 1024 * 1024;
+  }
+  return mb * 1024 * 1024;
+}
 
 export const EVALUATE_USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36';

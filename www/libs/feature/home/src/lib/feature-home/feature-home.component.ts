@@ -25,6 +25,7 @@ export class HomeComponent implements OnDestroy, OnInit {
   fnAsString!: string;
   hasResponse!: boolean;
   screenshot!: string;
+  screenshotsAvailable = true;
 
   private window: Window;
   private getMessageSubscription?: Subscription;
@@ -43,6 +44,15 @@ export class HomeComponent implements OnDestroy, OnInit {
   ngOnInit() {
     this.window?.localStorage && (this.fn = this.window.localStorage.getItem('evaluator.fn') || '');
     this.window?.localStorage && (this.fnAsString = this.window.localStorage.getItem('evaluator.fnAsString') || '');
+    void fetch('/evaluate-meta.json')
+      .then((r) => r.json())
+      .then((body: { screenshots?: boolean }) => {
+        this.screenshotsAvailable = body.screenshots !== false;
+        this.changeDetectorRef.markForCheck();
+      })
+      .catch(() => {
+        /* keep default true for local dev without gateway */
+      });
   }
 
   private sendResults() {
