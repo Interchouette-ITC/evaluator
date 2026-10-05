@@ -35,7 +35,7 @@ jobs:
 
       - name: npm audit (high+)
         working-directory: www
-        run: npm audit --audit-level=high
+        run: node scripts/npm-audit-ci.mjs
 
       - name: Build
         working-directory: www
