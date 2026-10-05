@@ -4,7 +4,8 @@ import { filter, map, pipe, take, type Subscription } from 'rxjs';
 
 import { Message, MessageResult, Result, StackFrame } from '@evaluator/shared-types';
 
-import { isValidHttpUrl } from './browser-engine';
+import { isValidHttpUrl, screenshotsEnabled } from './browser-engine';
+import { withEvaluateSlot } from './evaluate-guard';
 import type { ConsoleHit } from './console-hit';
 import { createEvaluateSession } from './engine.factory';
 import { START } from './eval.template';
@@ -86,7 +87,7 @@ export function decorateResult(message: ConsoleHit): MessageResult {
 /**
  * Run one evaluate on a fresh browser session (one Chromium launch/close).
  */
-export async function runEvaluate(opts: RunEvaluateOpts): Promise<RunEvaluateOutcome> {
+async function runEvaluateUnlocked(opts: RunEvaluateOpts): Promise<RunEvaluateOutcome> {
   const url = opts.url?.trim() || '';
   if (!isValidHttpUrl(url)) {
     throw new Error('not a valid url?');
@@ -103,8 +104,9 @@ export async function runEvaluate(opts: RunEvaluateOpts): Promise<RunEvaluateOut
       results.push(result);
       opts.onResult?.(result);
     });
+  const takeScreenshot = screenshotsEnabled();
   try {
-    const screenshot = await session.goto(message);
+    const screenshot = await session.goto(message, { screenshot: takeScreenshot });
     return { results, screenshot: screenshot || undefined };
   } finally {
     subscription.unsubscribe();
@@ -112,12 +114,16 @@ export async function runEvaluate(opts: RunEvaluateOpts): Promise<RunEvaluateOut
   }
 }
 
+export async function runEvaluate(opts: RunEvaluateOpts): Promise<RunEvaluateOutcome> {
+  return withEvaluateSlot(() => runEvaluateUnlocked(opts));
+}
+
 /**
  * Batch evaluate: one Chromium for the whole run (sequential sites).
  * Streams each site via onSite and does not retain outcomes (or screenshots).
  * Returns the number of sites processed.
  */
-export async function runBatch(opts: RunBatchOpts): Promise<number> {
+async function runBatchUnlocked(opts: RunBatchOpts): Promise<number> {
   const urls = opts.urls.map((u) => u.trim()).filter(Boolean);
   if (urls.length === 0) {
     return 0;
@@ -149,7 +155,6 @@ export async function runBatch(opts: RunBatchOpts): Promise<number> {
           { url, fn, clearFn },
           {
             screenshot: takeScreenshot,
-            // Storefronts rarely reach networkidle; that path OOMs / hangs the host.
             waitUntil: 'load',
           }
         );
@@ -166,13 +171,16 @@ export async function runBatch(opts: RunBatchOpts): Promise<number> {
         : { results };
       count += 1;
       opts.onSite?.(url, outcome);
-      // Do not push onto an array — drop outcome after the callback returns.
     }
   } finally {
     await session.close();
     console.error('[evaluate] browser closed');
   }
   return count;
+}
+
+export async function runBatch(opts: RunBatchOpts): Promise<number> {
+  return withEvaluateSlot(() => runBatchUnlocked(opts));
 }
 
 export { dedupAndFilter };

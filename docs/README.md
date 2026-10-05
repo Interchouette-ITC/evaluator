@@ -138,6 +138,17 @@ Compose profile: `web` (ports `4000` + `9790`).
 | --- | --- |
 | `web` / default | Nest + Node `serve` `:4000`; MCP HTTP sidecar if `ENABLE_MCP=1` |
 | `ENABLE_MCP=0` | Web only |
+
+Memory / evaluate (production defaults lean for small hosts):
+
+| Variable | Default | Role |
+| --- | --- | --- |
+| `EVALUATOR_MAX_RSS_MB` | `280` | Refuse new evaluates when process RSS is above this (HTTP 503). |
+| `EVALUATOR_SCREENSHOT` | off when `NODE_ENV=production` | Set `1` to capture PNG screenshots on evaluate. |
+| `EVALUATOR_EVAL_LOCK` | `/tmp/evaluator-evaluate.lock` | Cross-process lock so only one Chromium runs at a time. |
+| `EVALUATOR_EVAL_WAIT_MS` | `120000` | Max wait for the evaluate lock before `evaluate_busy`. |
+
+UI reads `GET /evaluate-meta.json` (`screenshots`) to show when captures are disabled.
 | `mcp` | `evaluator-mcp` stdio |
 | `mcp --http` | MCP HTTP only |
 | `evaluator` / interactive | Rust prompt; spawn Node evaluate/batch |

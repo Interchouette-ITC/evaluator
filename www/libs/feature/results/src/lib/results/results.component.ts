@@ -39,6 +39,7 @@ export class ResultsComponent implements AfterViewInit {
   }
   @Input() fnAsString!: string;
   @Input() screenshot!: string;
+  @Input() screenshotsAvailable = true;
   @HostBinding('class.filled') get result() { return this.url && this.results.length; }
 
   results: MessageResult[] = [];

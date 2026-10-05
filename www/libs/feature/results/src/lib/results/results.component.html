@@ -1,3 +1,6 @@
+<p *ngIf="hasResponse && !screenshotsAvailable" class="screenshot-disabled-note">
+  Page screenshots are disabled on this server.
+</p>
 <div *ngIf="screenshot" class="screenshot">
   <h3 (click)="isOpenScreenshot = !isOpenScreenshot">
     {{ isOpenScreenshot ? '-' : '+' }} screenshot
