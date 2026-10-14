@@ -41,7 +41,7 @@
     "@nx/jest": "^23.2.1",
     "@nx/module-federation": "^23.2.1",
     "@nx/rspack": "^23.2.1",
-    "@nx/vitest": "^23.2.1",
+    "@nx/vitest": "^23.3.0",
     "@nx/webpack": "^23.2.1",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
