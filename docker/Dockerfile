@@ -7,7 +7,7 @@
 #   docker run … evaluator -p …   # Rust CLI → Node evaluate/batch
 
 ARG NODE_IMAGE=node:26-trixie-slim
-ARG RUST_IMAGE=rust:1.88-bookworm
+ARG RUST_IMAGE=rust:1.99-bookworm
 
 FROM ${RUST_IMAGE} AS rust-builder
 WORKDIR /src
