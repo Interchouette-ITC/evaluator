@@ -101,7 +101,7 @@
     "prettier": "^3.9.10",
     "ts-node": "10.9.2",
     "typescript": "~6.0.3",
-    "vite": "^8.3.1",
+    "vite": "^8.3.3",
     "vitest": "4.1.12"
   },
   "browser": {
@@ -119,7 +119,11 @@
     "axios": "1.20.0",
     "proxy-addr": "2.0.8",
     "source-map-js": "1.2.2",
-    "undici": "7.30.1"
+    "undici": "7.30.1",
+    "vite": "^8.3.3",
+    "@angular/build": {
+      "vite": "^8.3.3"
+    }
   },
   "allowScripts": {
     "esbuild@0.28.1": true,
