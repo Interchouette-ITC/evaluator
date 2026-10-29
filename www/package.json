@@ -109,7 +109,7 @@
   },
   "overrides": {
     "smol-toml": "^1.9.1",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "svgo": "^4.0.3",
     "image-size": "^2.0.2",
     "qs": "6.16.0",
