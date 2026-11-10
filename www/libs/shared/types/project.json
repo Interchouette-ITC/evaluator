@@ -1,20 +1,15 @@
 {
+  "name": "shared-types",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
   "sourceRoot": "libs/shared/types/src",
   "prefix": "evaluator",
+  "tags": ["types"],
   "targets": {
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "libs/shared/types/**/*.ts",
-          "libs/shared/types/**/*.html"
-        ]
+        "args": ["**/*.ts", "**/*.html"]
       }
     }
-  },
-  "tags": [
-    "types"
-  ],
-  "name": "shared-types"
+  }
 }

@@ -1,30 +1,25 @@
 {
+  "name": "feature-results",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
   "sourceRoot": "libs/feature/results/src",
   "prefix": "evaluator",
+  "tags": ["results"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/libs/feature/results"
       ],
       "options": {
         "config": "libs/feature/results/vite.config.mts",
-        "reportsDirectory": "coverage/libs/feature/results"
+        "coverage.reportsDirectory": "../../../coverage/libs/feature/results"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "libs/feature/results/**/*.ts",
-          "libs/feature/results/**/*.html"
-        ]
+        "args": ["**/*.ts", "**/*.html"]
       }
     }
-  },
-  "tags": [
-    "results"
-  ],
-  "name": "feature-results"
+  }
 }
