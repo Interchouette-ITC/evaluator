@@ -1,24 +1,26 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite';
-import angular from '@analogjs/vite-plugin-angular';
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
-import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
+import { defineConfig } from "vite";
+import angular from "@analogjs/vite-plugin-angular";
+import { nxCopyAssetsPlugin } from "@nx/vite/plugins/nx-copy-assets.plugin";
 
 export default defineConfig(() => ({
+  resolve: {
+    tsconfigPaths: true,
+  },
   root: __dirname,
-  cacheDir: '../../../node_modules/.vite/libs/feature/logging',
-  plugins: [angular(), nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
+  cacheDir: "../../../node_modules/.vite/libs/feature/logging",
+  plugins: [angular(), nxCopyAssetsPlugin(["*.md"])],
   test: {
-    name: 'feature-logging',
+    name: "feature-logging",
     watch: false,
     globals: true,
-    environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    setupFiles: ['src/test-setup.ts'],
-    reporters: ['default'],
+    environment: "jsdom",
+    include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    setupFiles: ["src/test-setup.ts"],
+    reporters: ["default"],
     coverage: {
-      reportsDirectory: '../../../coverage/libs/feature/logging',
-      provider: 'v8' as const,
+      reportsDirectory: "../../../coverage/libs/feature/logging",
+      provider: "v8" as const,
     },
   },
 }));

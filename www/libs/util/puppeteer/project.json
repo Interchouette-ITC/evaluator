@@ -1,30 +1,25 @@
 {
+  "name": "util-puppeteer",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
   "sourceRoot": "libs/util/puppeteer/src",
   "prefix": "evaluator",
+  "tags": ["util-puppeteer"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/libs/util/puppeteer"
       ],
       "options": {
         "config": "libs/util/puppeteer/vite.config.mts",
-        "reportsDirectory": "coverage/libs/util/puppeteer"
+        "coverage.reportsDirectory": "../../../coverage/libs/util/puppeteer"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "libs/util/puppeteer/**/*.ts",
-          "libs/util/puppeteer/**/*.html"
-        ]
+        "args": ["**/*.ts", "**/*.html"]
       }
     }
-  },
-  "tags": [
-    "util-puppeteer"
-  ],
-  "name": "util-puppeteer"
+  }
 }

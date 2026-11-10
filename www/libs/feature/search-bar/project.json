@@ -1,30 +1,25 @@
 {
+  "name": "feature-search-bar",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
   "sourceRoot": "libs/feature/search-bar/src",
   "prefix": "evaluator",
+  "tags": ["search-bar"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/libs/feature/search-bar"
       ],
       "options": {
         "config": "libs/feature/search-bar/vite.config.mts",
-        "reportsDirectory": "coverage/libs/feature/search-bar"
+        "coverage.reportsDirectory": "../../../coverage/libs/feature/search-bar"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "libs/feature/search-bar/**/*.ts",
-          "libs/feature/search-bar/**/*.html"
-        ]
+        "args": ["**/*.ts", "**/*.html"]
       }
     }
-  },
-  "tags": [
-    "search-bar"
-  ],
-  "name": "feature-search-bar"
+  }
 }
