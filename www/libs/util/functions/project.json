@@ -1,32 +1,24 @@
 {
+  "name": "util-functions",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/util/functions/src",
   "projectType": "library",
+  "tags": ["util-functions"],
   "targets": {
     "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": [
-        "{options.outputFile}"
-      ],
       "options": {
-        "lintFilePatterns": [
-          "libs/util/functions/**/*.ts"
-        ]
+        "args": ["**/*.ts"]
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/libs/util/functions"
       ],
       "options": {
         "config": "libs/util/functions/vite.config.mts",
-        "reportsDirectory": "coverage/libs/util/functions"
+        "coverage.reportsDirectory": "../../../coverage/libs/util/functions"
       }
     }
-  },
-  "tags": [
-    "util-functions"
-  ],
-  "name": "util-functions"
+  }
 }

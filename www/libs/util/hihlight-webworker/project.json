@@ -1,30 +1,25 @@
 {
+  "name": "util-hihlight-webworker",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
   "sourceRoot": "libs/util/hihlight-webworker/src",
   "prefix": "evaluator",
+  "tags": ["util-highlight-webworker"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/libs/util/hihlight-webworker"
       ],
       "options": {
         "config": "libs/util/hihlight-webworker/vite.config.mts",
-        "reportsDirectory": "coverage/libs/util/hihlight-webworker"
+        "coverage.reportsDirectory": "../../../coverage/libs/util/hihlight-webworker"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "libs/util/hihlight-webworker/**/*.ts",
-          "libs/util/hihlight-webworker/**/*.html"
-        ]
+        "args": ["**/*.ts", "**/*.html"]
       }
     }
-  },
-  "tags": [
-    "util-highlight-webworker"
-  ],
-  "name": "util-hihlight-webworker"
+  }
 }

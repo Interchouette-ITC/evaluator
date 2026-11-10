@@ -1,5 +1,6 @@
 {
   "name": "evaluator",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "projectType": "application",
   "sourceRoot": "apps/evaluator/src",
   "prefix": "evaluator",
@@ -7,16 +8,13 @@
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/evaluator",
         "browser": "apps/evaluator/src/main.ts",
         "index": "apps/evaluator/src/index.html",
-        "polyfills": [
-          "zone.js"
-        ],
+        "polyfills": ["zone.js"],
         "tsConfig": "apps/evaluator/tsconfig.app.json",
         "inlineStyleLanguage": "scss",
         "assets": [
@@ -70,12 +68,18 @@
           "extractLicenses": false,
           "sourceMap": true
         }
-      },
-      "defaultConfiguration": "production"
+      }
     },
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "readyWhen": {
+        "signal": true
+      },
+      "options": {
+        "proxyConfig": "apps/evaluator/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "evaluator:build:production"
@@ -83,10 +87,6 @@
         "development": {
           "buildTarget": "evaluator:build:development"
         }
-      },
-      "defaultConfiguration": "development",
-      "options": {
-        "proxyConfig": "apps/evaluator/proxy.conf.json"
       }
     },
     "extract-i18n": {
@@ -96,36 +96,29 @@
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "apps/evaluator/**/*.ts"
-        ]
+        "args": ["**/*.ts"]
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/apps/evaluator"
       ],
       "options": {
         "config": "apps/evaluator/vite.config.mts",
-        "reportsDirectory": "coverage/apps/evaluator"
+        "coverage.reportsDirectory": "../../coverage/apps/evaluator"
       }
     },
     "build-node": {
       "executor": "@nx/esbuild:esbuild",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/evaluator/server",
         "main": "apps/evaluator/server.ts",
         "tsConfig": "apps/evaluator/tsconfig.server.json",
         "platform": "node",
-        "format": [
-          "cjs"
-        ],
+        "format": ["cjs"],
         "bundle": true,
         "thirdParty": true,
         "generatePackageJson": false,

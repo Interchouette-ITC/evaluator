@@ -1,30 +1,25 @@
 {
+  "name": "feature-home",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "projectType": "library",
   "sourceRoot": "libs/feature/home/src",
   "prefix": "evaluator",
+  "tags": ["feature-home"],
   "targets": {
     "test": {
-      "executor": "@nx/vite:test",
       "outputs": [
-        "{options.reportsDirectory}"
+        "{projectRoot}/{options.coverage.reportsDirectory}",
+        "{workspaceRoot}/coverage/libs/feature/home"
       ],
       "options": {
         "config": "libs/feature/home/vite.config.mts",
-        "reportsDirectory": "coverage/libs/feature/home"
+        "coverage.reportsDirectory": "../../../coverage/libs/feature/home"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": [
-          "libs/feature/home/**/*.ts",
-          "libs/feature/home/**/*.html"
-        ]
+        "args": ["**/*.ts", "**/*.html"]
       }
     }
-  },
-  "tags": [
-    "feature-home"
-  ],
-  "name": "feature-home"
+  }
 }
