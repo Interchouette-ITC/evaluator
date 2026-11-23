@@ -73,7 +73,7 @@
     "@nx/esbuild": "24.0.5",
     "@nx/eslint": "24.0.5",
     "@nx/eslint-plugin": "24.0.5",
-    "@nx/js": "24.0.5",
+    "@nx/js": "24.0.6",
     "@nx/nest": "24.0.5",
     "@nx/node": "24.0.5",
     "@nx/vite": "24.0.5",
