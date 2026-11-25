@@ -76,7 +76,7 @@
     "@nx/js": "24.0.6",
     "@nx/nest": "24.0.5",
     "@nx/node": "24.0.5",
-    "@nx/vite": "24.0.5",
+    "@nx/vite": "24.0.6",
     "@nx/web": "24.0.5",
     "@nx/workspace": "24.0.6",
     "@types/express": "^5.0.6",
